@@ -230,6 +230,9 @@ export async function createProperty(
       images: finalImages,
       imageUrls: finalImages, // Provided as alias for consistency
       genderPreference: propertyData.genderPreference || 'Any',
+      ...(propertyData.occupationPreference ? { occupationPreference: propertyData.occupationPreference } : {}),
+      ...(propertyData.minAge !== undefined && !isNaN(Number(propertyData.minAge)) ? { minAge: Number(propertyData.minAge) } : {}),
+      ...(propertyData.maxAge !== undefined && !isNaN(Number(propertyData.maxAge)) ? { maxAge: Number(propertyData.maxAge) } : {}),
       ...(parsedSeats !== undefined && !isNaN(parsedSeats) && parsedSeats >= 0
         ? { availableSeats: parsedSeats }
         : {}),

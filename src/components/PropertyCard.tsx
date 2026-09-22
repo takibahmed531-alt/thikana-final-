@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { MapPin, BadgeCheck, Bookmark, BedDouble, Bath, Maximize2, Users, User } from 'lucide-react';
+import { MapPin, BadgeCheck, Bookmark, BedDouble, Bath, Maximize2, Users, User, Briefcase } from 'lucide-react';
 
 export interface PropertyItem {
   id: string;
@@ -17,6 +17,9 @@ export interface PropertyItem {
   areaSqft?: number;
   postedTime?: string;
   genderPreference?: 'Any' | 'Male' | 'Female' | string;
+  occupationPreference?: 'Any' | 'Student' | 'Job Holder' | string;
+  minAge?: number;
+  maxAge?: number;
   availableSeats?: number;
   status?: 'available' | 'rented' | string;
   coordinates?: [number, number];
@@ -188,6 +191,7 @@ export default function PropertyCard({
           property.bathrooms !== undefined ||
           property.areaSqft !== undefined ||
           property.genderPreference ||
+          (property.occupationPreference && property.occupationPreference !== 'Any') ||
           (property.availableSeats !== undefined && property.availableSeats !== null)) && (
           <div className="pt-2.5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-slate-600 text-xs font-medium">
             {property.bedrooms !== undefined && (
@@ -216,6 +220,14 @@ export default function PropertyCard({
               <div className="flex items-center gap-1 text-slate-700 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-150">
                 <Users className="w-3.5 h-3.5 text-emerald-600" />
                 <span>{property.genderPreference}</span>
+              </div>
+            )}
+
+            {/* Occupation Preference Indicator */}
+            {property.occupationPreference && property.occupationPreference !== 'Any' && (
+              <div className="flex items-center gap-1 text-slate-700 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-150">
+                <Briefcase className="w-3.5 h-3.5 text-emerald-600" />
+                <span>{property.occupationPreference}</span>
               </div>
             )}
 

@@ -143,6 +143,9 @@ export default function PostAdPage() {
   const [category, setCategory] = useState<PropertyCategory>('apartment');
   const [location, setLocation] = useState('');
   const [genderPreference, setGenderPreference] = useState<GenderPreference>('Any');
+  const [occupationPreference, setOccupationPreference] = useState('Any');
+  const [minAge, setMinAge] = useState('');
+  const [maxAge, setMaxAge] = useState('');
   const [availableSeats, setAvailableSeats] = useState<string>('');
   const [coordinates, setCoordinates] = useState<[number, number]>(DHAKA_DEFAULT_COORDINATES);
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>(['WiFi', 'Lift / Elevator', 'CCTV Security']);
@@ -175,6 +178,9 @@ export default function PostAdPage() {
           if (prop.genderPreference) {
             setGenderPreference(prop.genderPreference as GenderPreference);
           }
+          if (prop.occupationPreference) setOccupationPreference(prop.occupationPreference as string);
+          if (prop.minAge !== undefined) setMinAge(String(prop.minAge));
+          if (prop.maxAge !== undefined) setMaxAge(String(prop.maxAge));
           if (prop.availableSeats !== undefined && prop.availableSeats !== null) {
             setAvailableSeats(String(prop.availableSeats));
           }
@@ -247,6 +253,9 @@ export default function PostAdPage() {
           ? parseInt(availableSeats, 10)
           : undefined;
 
+      const parsedMinAge = minAge.trim() !== '' ? parseInt(minAge, 10) : undefined;
+      const parsedMaxAge = maxAge.trim() !== '' ? parseInt(maxAge, 10) : undefined;
+
       // Task 4: Handle update when editId is present vs create when creating new listing
       if (editId) {
         const updatedData = {
@@ -256,6 +265,9 @@ export default function PostAdPage() {
           location: location.trim(),
           amenities: selectedAmenities,
           genderPreference,
+          occupationPreference,
+          ...(parsedMinAge !== undefined && !isNaN(parsedMinAge) && parsedMinAge > 0 ? { minAge: parsedMinAge } : {}),
+          ...(parsedMaxAge !== undefined && !isNaN(parsedMaxAge) && parsedMaxAge > 0 ? { maxAge: parsedMaxAge } : {}),
           ...(parsedSeats !== undefined && !isNaN(parsedSeats) && parsedSeats >= 0
             ? { availableSeats: parsedSeats }
             : {}),
@@ -279,6 +291,9 @@ export default function PostAdPage() {
             amenities: selectedAmenities,
             images: imagePreviews,
             genderPreference,
+            occupationPreference,
+            ...(parsedMinAge !== undefined && !isNaN(parsedMinAge) && parsedMinAge > 0 ? { minAge: parsedMinAge } : {}),
+            ...(parsedMaxAge !== undefined && !isNaN(parsedMaxAge) && parsedMaxAge > 0 ? { maxAge: parsedMaxAge } : {}),
             ...(parsedSeats !== undefined && !isNaN(parsedSeats) && parsedSeats >= 0
               ? { availableSeats: parsedSeats }
               : {}),
@@ -471,6 +486,56 @@ export default function PostAdPage() {
                 </p>
               </div>
             )}
+          </div>
+
+          {/* Occupation Preference & Age Limit */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Column 1: Occupation Preference */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wide mb-1.5">
+                Occupation Preference *
+              </label>
+              <select
+                value={occupationPreference}
+                onChange={(e) => setOccupationPreference(e.target.value)}
+                className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 shadow-xs"
+              >
+                <option value="Any">Any</option>
+                <option value="Student">Student</option>
+                <option value="Job Holder">Job Holder</option>
+              </select>
+              <p className="text-[11px] text-slate-500 mt-1">
+                Target specific tenant occupations.
+              </p>
+            </div>
+
+            {/* Column 2: Age Limit (Optional) */}
+            <fieldset>
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wide mb-1.5">
+                Age Limit (Optional)
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min="1"
+                  max="120"
+                  placeholder="Min Age"
+                  value={minAge}
+                  onChange={(e) => setMinAge(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 shadow-xs"
+                />
+                <span className="text-slate-400 text-xs font-medium">to</span>
+                <input
+                  type="number"
+                  min="1"
+                  max="120"
+                  placeholder="Max Age"
+                  value={maxAge}
+                  onChange={(e) => setMaxAge(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 shadow-xs"
+                />
+              </div>
+            </fieldset>
           </div>
 
           {/* Location Area Text */}

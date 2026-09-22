@@ -132,6 +132,19 @@
           "enum": ["Any", "Male", "Female"],
           "description": "Gender preference for prospective tenants."
         },
+        "occupationPreference": {
+          "type": "string",
+          "enum": ["Any", "Student", "Job Holder"],
+          "description": "Occupation preference for prospective tenants."
+        },
+        "minAge": {
+          "type": "number",
+          "description": "Minimum age requirement for prospective tenants."
+        },
+        "maxAge": {
+          "type": "number",
+          "description": "Maximum age requirement for prospective tenants."
+        },
         "availableSeats": {
           "type": "number",
           "description": "Available bed or seat count for shared or sublet listings."

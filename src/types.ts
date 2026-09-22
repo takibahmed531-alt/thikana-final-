@@ -53,6 +53,7 @@ export type PropertyCategory =
   | 'hostel';
 
 export type GenderPreference = 'Any' | 'Male' | 'Female';
+export type OccupationPreference = 'Any' | 'Student' | 'Job Holder';
 export type PropertyStatus = 'available' | 'rented';
 
 export interface PropertyListing {
@@ -67,6 +68,9 @@ export interface PropertyListing {
   images: string[];
   imageUrls?: string[];
   genderPreference: 'Any' | 'Male' | 'Female';
+  occupationPreference?: OccupationPreference | string;
+  minAge?: number;
+  maxAge?: number;
   availableSeats?: number;
   status: 'available' | 'rented';
   coordinates: [number, number];
@@ -84,6 +88,9 @@ export interface PropertyDataInput {
   images?: string[];
   imageUrls?: string[];
   genderPreference: 'Any' | 'Male' | 'Female';
+  occupationPreference?: OccupationPreference | string;
+  minAge?: number;
+  maxAge?: number;
   availableSeats?: number;
   status: 'available' | 'rented';
   coordinates: [number, number];

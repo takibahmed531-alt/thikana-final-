@@ -189,6 +189,9 @@ function mapListingToPropertyItem(p: PropertyListing): PropertyItem {
     areaSqft: 1400,
     postedTime: 'Just now',
     genderPreference: p.genderPreference,
+    occupationPreference: p.occupationPreference,
+    minAge: p.minAge,
+    maxAge: p.maxAge,
     availableSeats: p.availableSeats,
     status: p.status || 'available',
     coordinates: p.coordinates,
@@ -200,6 +203,11 @@ export default function HomePage() {
   const [searchParams] = useSearchParams();
   const [searchArea, setSearchArea] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [showFilters, setShowFilters] = useState(false);
+  const [filterGender, setFilterGender] = useState('Any');
+  const [filterOccupation, setFilterOccupation] = useState('Any');
+  const [filterMinRent, setFilterMinRent] = useState('');
+  const [filterMaxRent, setFilterMaxRent] = useState('');
   const [liveProperties, setLiveProperties] = useState<PropertyItem[]>([]);
   const [lastVisibleDoc, setLastVisibleDoc] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
   const [hasMore, setHasMore] = useState<boolean>(false);
@@ -342,9 +350,18 @@ export default function HomePage() {
         }
       }
 
-      return categoryMatch && searchMatch;
+      const genderMatch = filterGender === 'Any' || prop.genderPreference === filterGender;
+      const occupationMatch =
+        filterOccupation === 'Any' ||
+        prop.occupationPreference === filterOccupation ||
+        prop.occupationPreference === 'Any' ||
+        !prop.occupationPreference;
+      const minBudgetMatch = !filterMinRent || prop.rentAmount >= Number(filterMinRent);
+      const maxBudgetMatch = !filterMaxRent || prop.rentAmount <= Number(filterMaxRent);
+
+      return categoryMatch && searchMatch && genderMatch && occupationMatch && minBudgetMatch && maxBudgetMatch;
     });
-  }, [searchArea, selectedCategory, liveProperties]);
+  }, [searchArea, selectedCategory, liveProperties, filterGender, filterOccupation, filterMinRent, filterMaxRent]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8">
@@ -388,29 +405,108 @@ export default function HomePage() {
                 value={searchArea}
                 onChange={(e) => setSearchArea(e.target.value)}
                 placeholder={t('homeSearchPlaceholder')}
-                className="w-full pl-12 pr-12 py-3.5 sm:py-4 bg-white/95 text-slate-900 placeholder-slate-400 rounded-2xl text-sm sm:text-base font-medium focus:outline-none focus:ring-4 focus:ring-emerald-500/30 transition-all border border-white/20"
+                className="w-full pl-12 pr-24 py-3.5 sm:py-4 bg-white/95 text-slate-900 placeholder-slate-400 rounded-2xl text-sm sm:text-base font-medium focus:outline-none focus:ring-4 focus:ring-emerald-500/30 transition-all border border-white/20"
               />
 
-              {searchArea ? (
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+                {searchArea && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchArea('')}
+                    className="p-1 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                    aria-label="Clear area search"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+
                 <button
                   type="button"
-                  onClick={() => setSearchArea('')}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
-                  aria-label="Clear area search"
+                  onClick={() => setShowFilters((prev) => !prev)}
+                  className={`p-2 rounded-xl border transition-all cursor-pointer ${
+                    showFilters || filterGender !== 'Any' || filterOccupation !== 'Any' || filterMinRent || filterMaxRent
+                      ? 'bg-emerald-600 text-white border-emerald-500 shadow-sm'
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-600 border-slate-200'
+                  }`}
+                  title="Toggle Advanced Filters"
+                  aria-label="Toggle Advanced Filters"
                 >
-                  <X className="w-4 h-4" />
+                  <SlidersHorizontal className="w-4 h-4" />
                 </button>
-              ) : (
-                <div className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1.5 rounded-xl bg-emerald-600 text-white shadow-sm">
-                  <Search className="w-4 h-4" />
-                </div>
-              )}
+              </div>
             </div>
+
+            {/* Conditionally Rendered Advanced Filter Panel */}
+            {showFilters && (
+              <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-4 sm:p-5 mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-in fade-in zoom-in-95 duration-150">
+                {/* Gender Preference */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-200 mb-1.5 uppercase tracking-wide">
+                    Gender Preference
+                  </label>
+                  <select
+                    value={filterGender}
+                    onChange={(e) => setFilterGender(e.target.value)}
+                    className="w-full bg-white/95 text-slate-900 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-emerald-500/50 outline-none"
+                  >
+                    <option value="Any">Any Gender</option>
+                    <option value="Male">Male Only</option>
+                    <option value="Female">Female Only</option>
+                  </select>
+                </div>
+
+                {/* Occupation Preference */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-200 mb-1.5 uppercase tracking-wide">
+                    Occupation Preference
+                  </label>
+                  <select
+                    value={filterOccupation}
+                    onChange={(e) => setFilterOccupation(e.target.value)}
+                    className="w-full bg-white/95 text-slate-900 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-emerald-500/50 outline-none"
+                  >
+                    <option value="Any">Any Occupation</option>
+                    <option value="Student">Student</option>
+                    <option value="Job Holder">Job Holder</option>
+                  </select>
+                </div>
+
+                {/* Min Rent */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-200 mb-1.5 uppercase tracking-wide">
+                    Min Rent (BDT)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="Min BDT (e.g. 5000)"
+                    value={filterMinRent}
+                    onChange={(e) => setFilterMinRent(e.target.value)}
+                    className="w-full bg-white/95 text-slate-900 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-emerald-500/50 outline-none placeholder-slate-400"
+                  />
+                </div>
+
+                {/* Max Rent */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-200 mb-1.5 uppercase tracking-wide">
+                    Max Rent (BDT)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="Max BDT (e.g. 35000)"
+                    value={filterMaxRent}
+                    onChange={(e) => setFilterMaxRent(e.target.value)}
+                    className="w-full bg-white/95 text-slate-900 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-emerald-500/50 outline-none placeholder-slate-400"
+                  />
+                </div>
+              </div>
+            )}
 
             {/* Quick Suggestions Chips */}
             <div className="flex flex-wrap items-center gap-2 mt-3 text-xs text-slate-300">
               <span className="text-slate-400 font-medium">{t('popularAreas')}</span>
-              {['Dhanmondi', 'Banani', 'Uttara', 'Mirpur', 'Bashundhara'].map((area) => (
+              {['Dhanmondi', 'Mohammadpur', 'Mirpur', 'Uttara', 'Banani', 'Badda', 'Farmgate'].map((area) => (
                 <button
                   key={area}
                   type="button"
