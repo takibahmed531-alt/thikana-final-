@@ -41,6 +41,7 @@ export interface ChatMessage {
   senderUid: string;
   text: string;
   imageUrl?: string | null;
+  status?: 'sent' | 'delivered' | 'read';
   createdAt: any;
 }
 
@@ -195,6 +196,7 @@ export async function sendMessage(
       senderUid,
       text: trimmedText,
       imageUrl: imageUrl || null,
+      status: 'sent',
       createdAt: serverTimestamp(),
     };
 

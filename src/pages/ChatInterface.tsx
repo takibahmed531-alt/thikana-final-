@@ -8,8 +8,10 @@ import {
   Image as ImageIcon,
   ArrowLeft,
   MoreVertical,
+  Check,
   CheckCheck,
   ShieldCheck,
+  ShieldAlert,
   Building2,
   Clock,
   ExternalLink,
@@ -38,6 +40,7 @@ interface Message {
   text: string;
   timestamp: string;
   imageUrl?: string;
+  status?: 'sent' | 'delivered' | 'read';
 }
 
 interface Conversation {
@@ -90,6 +93,7 @@ const DUMMY_CONVERSATIONS: Conversation[] = [
         sender: 'me',
         text: 'Walaikum Assalam Tariqul bhai. Is the flat available for immediate move-in? And is the gas line cylinder or government line?',
         timestamp: '10:33 AM',
+        status: 'read',
       },
       {
         id: 'm3',
@@ -102,6 +106,7 @@ const DUMMY_CONVERSATIONS: Conversation[] = [
         sender: 'me',
         text: 'That sounds great! Can I schedule a physical viewing sometime this week?',
         timestamp: '10:40 AM',
+        status: 'read',
       },
       {
         id: 'm5',
@@ -132,6 +137,7 @@ const DUMMY_CONVERSATIONS: Conversation[] = [
         sender: 'me',
         text: 'Hi Tanvir, is the bachelor studio suitable for 2 people or strictly single occupancy?',
         timestamp: 'Yesterday 3:15 PM',
+        status: 'read',
       },
       {
         id: 'm202',
@@ -168,6 +174,7 @@ const DUMMY_CONVERSATIONS: Conversation[] = [
         sender: 'me',
         text: 'Hello, is dedicated car parking included in the ৳45k rent?',
         timestamp: 'Sep 19, 11:00 AM',
+        status: 'delivered',
       },
       {
         id: 'm302',
@@ -427,6 +434,7 @@ export default function ChatInterface() {
             text: m.text,
             timestamp: timeStr,
             imageUrl: m.imageUrl || undefined,
+            status: m.status || 'read',
           };
         });
         setLiveMessages(formatted);
@@ -495,6 +503,7 @@ export default function ChatInterface() {
         text: textToSend,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         imageUrl: imageToSend || undefined,
+        status: 'sent',
       };
 
       setDummyConversations((prev) =>
@@ -829,6 +838,14 @@ export default function ChatInterface() {
                   </div>
                 </div>
 
+                {/* Security Warning Banner */}
+                <div className="px-4 py-2.5 bg-amber-50/95 border-b border-amber-200/80 flex items-center gap-2.5 text-xs text-amber-900 shadow-2xs">
+                  <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0" />
+                  <p className="leading-snug text-[11px] sm:text-xs">
+                    For your security, never share personal details like Phone Numbers, Email, NID, or OTPs. Keep all communication within Thikana.
+                  </p>
+                </div>
+
                 {/* ---------------------------------------------------- */}
                 {/* Task 3: Message Feed (Scrollable with Chat Bubbles)  */}
                 {/* ---------------------------------------------------- */}
@@ -893,14 +910,33 @@ export default function ChatInterface() {
                             {msg.text}
                           </p>
 
-                          {/* Timestamp and Read Status */}
+                          {/* Timestamp and Delivery/Read Status Receipts */}
                           <div
                             className={`flex items-center justify-end gap-1 text-[10px] ${
                               isMe ? 'text-blue-100' : 'text-slate-400'
                             }`}
                           >
                             <span>{msg.timestamp}</span>
-                            {isMe && <CheckCheck className="w-3.5 h-3.5 text-blue-200" />}
+                            {isMe && (
+                              <span
+                                className="inline-flex items-center ml-0.5"
+                                title={
+                                  msg.status === 'read'
+                                    ? 'Read'
+                                    : msg.status === 'delivered'
+                                    ? 'Delivered'
+                                    : 'Sent'
+                                }
+                              >
+                                {msg.status === 'read' ? (
+                                  <CheckCheck className="w-3.5 h-3.5 text-sky-300" />
+                                ) : msg.status === 'delivered' ? (
+                                  <CheckCheck className="w-3.5 h-3.5 text-blue-200/75" />
+                                ) : (
+                                  <Check className="w-3.5 h-3.5 text-blue-200/75" />
+                                )}
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
