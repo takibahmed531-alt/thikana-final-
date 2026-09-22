@@ -414,6 +414,11 @@ export default function PropertyDetailsPage() {
               <span className="px-3 py-1 rounded-xl bg-slate-900/80 backdrop-blur-md text-white text-xs font-semibold">
                 {property.category}
               </span>
+              {id?.startsWith('prop-') && (
+                <span className="px-3 py-1 rounded-xl bg-amber-500/95 text-white text-xs font-bold">
+                  DEMO
+                </span>
+              )}
               {property.status === 'rented' && (
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-rose-600/95 backdrop-blur-md text-white text-xs font-bold shadow-sm">
                   <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
@@ -786,33 +791,39 @@ export default function PropertyDetailsPage() {
             </div>
 
             {/* Primary CTA Button: Chat with Landlord */}
-            <div className="space-y-2">
-              <button
-                type="button"
-                onClick={() => setIsChatOpen(true)}
-                className="w-full flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-lg shadow-emerald-600/20 active:scale-[0.99] transition-all cursor-pointer"
-              >
-                <MessageCircle className="w-5 h-5" />
-                <span>Quick Chat with Landlord</span>
-              </button>
+            {user?.uid !== property?.landlordUid ? (
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={() => setIsChatOpen(true)}
+                  className="w-full flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-lg shadow-emerald-600/20 active:scale-[0.99] transition-all cursor-pointer"
+                >
+                  <MessageCircle className="w-5 h-5" />
+                  <span>Quick Chat with Landlord</span>
+                </button>
 
-              <Link
-                to={`/messages?chatId=${effectiveChatId}`}
-                className="w-full flex items-center justify-center gap-2 px-6 py-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition-colors"
-              >
-                <span>Open Full Messenger</span>
-                <ExternalLink className="w-3.5 h-3.5 text-slate-500" />
-              </Link>
+                <Link
+                  to={`/messages?chatId=${effectiveChatId}`}
+                  className="w-full flex items-center justify-center gap-2 px-6 py-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition-colors"
+                >
+                  <span>Open Full Messenger</span>
+                  <ExternalLink className="w-3.5 h-3.5 text-slate-500" />
+                </Link>
 
-              <button
-                type="button"
-                onClick={() => setIsReportModalOpen(true)}
-                className="w-full flex items-center justify-center gap-1.5 py-1.5 text-xs text-slate-500 hover:text-rose-600 transition-colors cursor-pointer"
-              >
-                <Flag className="w-3.5 h-3.5" />
-                <span>Report Ad</span>
-              </button>
-            </div>
+                <button
+                  type="button"
+                  onClick={() => setIsReportModalOpen(true)}
+                  className="w-full flex items-center justify-center gap-1.5 py-1.5 text-xs text-slate-500 hover:text-rose-600 transition-colors cursor-pointer"
+                >
+                  <Flag className="w-3.5 h-3.5" />
+                  <span>Report Ad</span>
+                </button>
+              </div>
+            ) : (
+              <div className="p-6 mt-8 text-center text-sm font-medium text-slate-500 bg-slate-100 border border-slate-200 rounded-xl">
+                This is your own property listing. You cannot send messages to yourself.
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -10,6 +10,7 @@ export interface PropertyItem {
   location: string;
   category: string;
   isVerified?: boolean;
+  isDemo?: boolean;
   imageUrl: string;
   bedrooms?: number;
   bathrooms?: number;
@@ -103,6 +104,12 @@ export default function PropertyCard({
           <span className="px-2.5 py-1 rounded-lg bg-white/95 backdrop-blur-md text-[11px] font-semibold text-slate-800 shadow-sm border border-white/40">
             {property.category}
           </span>
+
+          {property.isDemo && (
+            <span className="px-2.5 py-1 rounded-lg bg-amber-500/95 text-white text-[11px] font-bold shadow-sm border border-amber-400">
+              DEMO
+            </span>
+          )}
 
           {displayAdId && (
             <span

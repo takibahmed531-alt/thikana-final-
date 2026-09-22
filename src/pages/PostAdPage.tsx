@@ -238,12 +238,6 @@ export default function PostAdPage() {
     setSuccessMsg(null);
 
     try {
-      // Default curated high-res placeholder if no custom image was uploaded
-      const defaultImages = [
-        'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80',
-        'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=800&q=80',
-      ];
-
       // Parse availableSeats only when category is bachelor_sublet or hostel
       const isSharedCategory = category === 'bachelor_sublet' || category === 'hostel';
       const parsedSeats =
@@ -281,7 +275,7 @@ export default function PostAdPage() {
             category,
             location: location.trim(),
             amenities: selectedAmenities,
-            images: imagePreviews.length === 0 ? defaultImages : [],
+            images: imagePreviews,
             genderPreference,
             ...(parsedSeats !== undefined && !isNaN(parsedSeats) && parsedSeats >= 0
               ? { availableSeats: parsedSeats }
@@ -620,20 +614,34 @@ export default function PostAdPage() {
             <p className="text-xs text-slate-400">
               Posting as: <strong className="text-slate-700">{user.displayName || user.email}</strong>
             </p>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="inline-flex items-center gap-2 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold shadow-sm transition-all cursor-pointer disabled:opacity-60"
-            >
-              {editId ? <Edit className="w-4 h-4" /> : <PlusCircle className="w-4 h-4" />}
-              {submitting
-                ? editId
-                  ? 'Updating...'
-                  : 'Publishing...'
-                : editId
-                ? 'Update Property'
-                : 'Publish to Thikana'}
-            </button>
+            <div className="flex items-center gap-3">
+              {editId && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    navigate('/profile');
+                  }}
+                  className="px-5 py-2.5 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 text-sm font-bold transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+              )}
+              <button
+                type="submit"
+                disabled={submitting}
+                className="inline-flex items-center gap-2 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold shadow-sm transition-all cursor-pointer disabled:opacity-60"
+              >
+                {editId ? <Edit className="w-4 h-4" /> : <PlusCircle className="w-4 h-4" />}
+                {submitting
+                  ? editId
+                    ? 'Updating...'
+                    : 'Publishing...'
+                  : editId
+                  ? 'Update Property'
+                  : 'Publish to Thikana'}
+              </button>
+            </div>
           </div>
         </form>
       )}
