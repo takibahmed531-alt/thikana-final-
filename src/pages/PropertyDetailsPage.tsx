@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { getPropertyById, deletePropertyListing } from '../services/propertyService';
+import { startConversationAndSendMessage } from '../services/chatService';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import {
@@ -35,6 +36,7 @@ import {
   Check,
   Trash2,
   Edit,
+  Loader2,
 } from 'lucide-react';
 import MapComponent from '../components/MapComponent';
 import NeighborhoodGuide from '../components/NeighborhoodGuide';
@@ -147,6 +149,7 @@ export default function PropertyDetailsPage() {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [chatMessage, setChatMessage] = useState('');
+  const [isSendingMsg, setIsSendingMsg] = useState(false);
   const [chatHistory, setChatHistory] = useState([
     {
       sender: 'landlord',
@@ -243,9 +246,6 @@ export default function PropertyDetailsPage() {
       ? `THK-${property.id.replace(/[^a-zA-Z0-9]/g, '').slice(0, 6).toUpperCase()}`
       : null;
 
-  const effectiveChatId =
-    property?.id === 'prop-2' ? 'c2' : property?.id === 'prop-3' ? 'c3' : 'c1';
-
   const handleCopyAdId = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -281,20 +281,48 @@ export default function PropertyDetailsPage() {
     }
   };
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
-    if (!chatMessage.trim()) return;
+    if (!user) {
+      openAuthModal('signin');
+      return;
+    }
+    const text = chatMessage.trim();
+    if (!text || isSendingMsg) return;
 
-    setChatHistory((prev) => [
-      ...prev,
-      {
-        sender: 'user',
-        text: chatMessage.trim(),
-        time: 'Just now',
-      },
-    ]);
-    setChatMessage('');
+    setIsSendingMsg(true);
+    try {
+      const targetLandlordUid = property?.landlordUid || 'landlord_demo_host';
+      await startConversationAndSendMessage(
+        user.uid,
+        targetLandlordUid,
+        property?.id || id || 'prop-1',
+        {
+          propertyId: property?.id || id || 'prop-1',
+          title: property?.title || 'Rental Property',
+          rentAmount: property?.rentAmount || 0,
+          location: property?.location || '',
+          imageUrl: property?.images?.[0] || '',
+        },
+        text
+      );
+
+      // Reflect the sent message in the local chat UI
+      setChatHistory((prev) => [
+        ...prev,
+        {
+          sender: 'user',
+          text,
+          time: 'Just now',
+        },
+      ]);
+      setChatMessage('');
+    } catch (err: any) {
+      console.error('Error sending message:', err);
+      alert(err?.message || 'Failed to send message. Please try again.');
+    } finally {
+      setIsSendingMsg(false);
+    }
   };
 
   return (
@@ -805,7 +833,7 @@ export default function PropertyDetailsPage() {
                 </button>
 
                 <Link
-                  to={`/messages?chatId=${effectiveChatId}`}
+                  to={`/messages?newPropertyId=${encodeURIComponent(property.id || id || 'prop-1')}&landlordUid=${encodeURIComponent(property.landlordUid || 'landlord_demo_host')}`}
                   className="w-full flex items-center justify-center gap-2 px-6 py-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition-colors"
                 >
                   <span>{t('openFullMessenger')}</span>
@@ -862,7 +890,7 @@ export default function PropertyDetailsPage() {
               </div>
               <div className="flex items-center gap-1">
                 <Link
-                  to={`/messages?chatId=${effectiveChatId}`}
+                  to={`/messages?newPropertyId=${encodeURIComponent(property.id || id || 'prop-1')}&landlordUid=${encodeURIComponent(property.landlordUid || 'landlord_demo_host')}`}
                   className="p-1.5 rounded-full hover:bg-white/10 text-slate-300 hover:text-white transition-colors"
                   title="Expand to Full Messenger"
                 >
@@ -950,21 +978,25 @@ export default function PropertyDetailsPage() {
                 type="text"
                 value={chatMessage}
                 onChange={(e) => setChatMessage(e.target.value)}
-                disabled={!user}
-                placeholder={!user ? 'Please sign in to send messages...' : 'Type your message to the owner...'}
+                disabled={!user || isSendingMsg}
+                placeholder={!user ? 'Please sign in to send messages...' : isSendingMsg ? 'Sending message...' : 'Type your message to the owner...'}
                 className={`flex-1 px-4 py-2.5 rounded-xl text-xs sm:text-sm focus:outline-none transition-all border ${
-                  !user
+                  !user || isSendingMsg
                     ? 'bg-slate-100 text-slate-400 placeholder-slate-400 cursor-not-allowed border-slate-200'
                     : 'bg-slate-50 text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:bg-white focus:border-emerald-600 border-slate-200'
                 }`}
               />
               <button
                 type="submit"
-                disabled={!user || !chatMessage.trim()}
-                className="p-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white transition-all shadow-sm cursor-pointer disabled:cursor-not-allowed"
+                disabled={!user || !chatMessage.trim() || isSendingMsg}
+                className="p-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white transition-all shadow-sm cursor-pointer disabled:cursor-not-allowed flex items-center justify-center"
                 aria-label="Send message"
               >
-                <Send className="w-4 h-4" />
+                {isSendingMsg ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Send className="w-4 h-4" />
+                )}
               </button>
             </form>
           </div>

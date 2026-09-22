@@ -25,12 +25,15 @@ import {
   subscribeToUserConversations,
   subscribeToMessages,
   sendMessage as sendFirebaseMessage,
+  startConversationAndSendMessage,
   softDeleteConversation,
   toggleStarConversation,
   uploadChatImage,
   Conversation as LiveConversation,
   ChatMessage,
+  PropertySummary,
 } from '../services/chatService';
+import { getPropertyById } from '../services/propertyService';
 
 interface Message {
   id: string;
@@ -212,9 +215,13 @@ export default function ChatInterface() {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const urlChatId = searchParams.get('chatId');
+  const newPropertyId = searchParams.get('newPropertyId') || searchParams.get('propertyId');
+  const landlordUid = searchParams.get('landlordUid');
 
   const [liveConversations, setLiveConversations] = useState<LiveConversation[]>([]);
   const [dummyConversations, setDummyConversations] = useState<Conversation[]>(DUMMY_CONVERSATIONS);
+  const [draftConversation, setDraftConversation] = useState<Conversation | null>(null);
+  const [draftPropertyRaw, setDraftPropertyRaw] = useState<any>(null);
   const [liveMessages, setLiveMessages] = useState<Message[]>([]);
   const [isSending, setIsSending] = useState(false);
   const [isConversationsLoaded, setIsConversationsLoaded] = useState(false);
@@ -237,6 +244,7 @@ export default function ChatInterface() {
       setActiveChatId('');
       setLiveConversations([]);
       setDummyConversations([]);
+      setDraftConversation(null);
       setIsConversationsLoaded(false);
       hasInitializedActiveChat.current = false;
     } else {
@@ -268,6 +276,86 @@ export default function ChatInterface() {
       unsubscribe();
     };
   }, [user?.uid]);
+
+  // Handle direct navigation with newPropertyId and landlordUid
+  useEffect(() => {
+    if (!user || !newPropertyId) return;
+
+    const targetLandlordUid = landlordUid || 'landlord_demo_host';
+
+    // 1. Check if an existing live conversation already matches this property and landlord
+    const existingLive = liveConversations.find(
+      (c) =>
+        c.propertyId === newPropertyId &&
+        (c.landlordUid === targetLandlordUid ||
+          c.tenantUid === targetLandlordUid ||
+          c.participants?.includes(targetLandlordUid))
+    );
+
+    if (existingLive) {
+      const liveId = existingLive.conversationId || existingLive.id || '';
+      setActiveChatId(liveId);
+      setDraftConversation(null);
+      hasInitializedActiveChat.current = true;
+      return;
+    }
+
+    // 2. No live conversation exists yet: prepare an active draft conversation UI
+    const draftId = `draft_${newPropertyId}_${targetLandlordUid}`;
+
+    const initialDraft: Conversation = {
+      id: draftId,
+      isLive: true,
+      propertyId: newPropertyId,
+      user: {
+        name: 'Property Landlord',
+        avatar:
+          'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
+        isVerified: true,
+        role: 'Landlord',
+        online: true,
+      },
+      propertyTitle: 'Property Inquiry',
+      propertyPrice: '৳30,000/mo',
+      propertyLocation: 'Dhaka, Bangladesh',
+      lastMessage: 'New inquiry — send a message to start conversation',
+      lastMessageTime: 'Just now',
+      unreadCount: 0,
+      messages: [],
+    };
+
+    setDraftConversation(initialDraft);
+    setActiveChatId(draftId);
+    hasInitializedActiveChat.current = true;
+
+    // Fetch real property details from Firestore to populate title, price, location, and photos
+    getPropertyById(newPropertyId)
+      .then((res) => {
+        if (res.success && res.property) {
+          const prop = res.property;
+          setDraftPropertyRaw(prop);
+          setDraftConversation((prev) => {
+            if (!prev || prev.id !== draftId) return prev;
+            return {
+              ...prev,
+              propertyTitle: prop.title || prev.propertyTitle,
+              propertyPrice: prop.rentAmount
+                ? `৳${prop.rentAmount.toLocaleString()}/mo`
+                : prev.propertyPrice,
+              propertyLocation: prop.location || prev.propertyLocation,
+              user: {
+                ...prev.user,
+                name: (prop as any).landlord?.name || 'Landlord',
+                avatar: prop.images?.[0] || prev.user.avatar,
+              },
+            };
+          });
+        }
+      })
+      .catch((err) => {
+        console.warn('Property lookup for draft chat notice:', err);
+      });
+  }, [newPropertyId, landlordUid, liveConversations, user]);
 
   // Map live Firestore conversations to UI presentation format
   const mappedLiveConversations: Conversation[] = useMemo(() => {
@@ -313,7 +401,15 @@ export default function ChatInterface() {
 
   // Combine live conversations first, followed by dummyConversations: filter deletedBy and sort starredBy to top
   const allConversations: Conversation[] = useMemo(() => {
-    const combined = [...mappedLiveConversations, ...dummyConversations];
+    let combined = [...mappedLiveConversations, ...dummyConversations];
+
+    // Prepend active draft conversation if not already represented in live conversations
+    if (
+      draftConversation &&
+      !mappedLiveConversations.some((c) => c.id === draftConversation.id || (draftConversation.propertyId && c.propertyId === draftConversation.propertyId))
+    ) {
+      combined = [draftConversation, ...combined];
+    }
 
     // Filter out conversations soft-deleted by current user
     const notDeleted = user?.uid
@@ -327,7 +423,7 @@ export default function ChatInterface() {
       const bStarred = b.starredBy?.includes(user.uid) ? 1 : 0;
       return bStarred - aStarred;
     });
-  }, [mappedLiveConversations, dummyConversations, user?.uid]);
+  }, [mappedLiveConversations, dummyConversations, draftConversation, user?.uid]);
 
   // Sync activeChatId when URL search param changes or active chat isn't initialized
   useEffect(() => {
@@ -343,11 +439,11 @@ export default function ChatInterface() {
         setActiveChatId(allConversations[0]?.id || DUMMY_CONVERSATIONS[0].id);
         hasInitializedActiveChat.current = true;
       }
-    } else if (!hasInitializedActiveChat.current && allConversations.length > 0) {
+    } else if (!newPropertyId && !hasInitializedActiveChat.current && allConversations.length > 0) {
       setActiveChatId(allConversations[0].id);
       hasInitializedActiveChat.current = true;
     }
-  }, [urlChatId, allConversations, isConversationsLoaded, user]);
+  }, [urlChatId, newPropertyId, allConversations, isConversationsLoaded, user]);
 
   // Close options menu if active chat changes
   useEffect(() => {
@@ -498,6 +594,45 @@ export default function ChatInterface() {
     setInputText('');
     setAttachedImage(null);
 
+    // If sending in a draft conversation (initialized from newPropertyId / landlordUid)
+    if (activeChatId.startsWith('draft_') || (draftConversation && activeChatId === draftConversation.id)) {
+      setIsSending(true);
+      try {
+        const targetPropId = newPropertyId || draftConversation?.propertyId || 'prop-1';
+        const targetLandlordUid = landlordUid || 'landlord_demo_host';
+        const propSummary: PropertySummary = {
+          propertyId: targetPropId,
+          title: draftConversation?.propertyTitle || 'Property Inquiry',
+          rentAmount: draftPropertyRaw?.rentAmount || 0,
+          location: draftConversation?.propertyLocation || '',
+          imageUrl: draftPropertyRaw?.images?.[0] || draftConversation?.user.avatar || '',
+        };
+
+        const res = await startConversationAndSendMessage(
+          user.uid,
+          targetLandlordUid,
+          targetPropId,
+          propSummary,
+          textToSend || (imageToSend ? 'Sent an attachment' : '')
+        );
+
+        if (imageToSend && res?.conversationId) {
+          await sendFirebaseMessage(res.conversationId, user.uid, '', imageToSend);
+        }
+
+        const newConvId = res.conversationId;
+        setDraftConversation(null);
+        setActiveChatId(newConvId);
+        setSearchParams({ chatId: newConvId });
+      } catch (err: any) {
+        console.error('Failed to start conversation and send message:', err);
+        alert(err?.message || 'Failed to send message. Please try again.');
+      } finally {
+        setIsSending(false);
+      }
+      return;
+    }
+
     if (isLiveChat) {
       setIsSending(true);
       try {
@@ -641,11 +776,15 @@ export default function ChatInterface() {
                             {conv.user.isVerified && (
                               <BadgeCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                             )}
-                            {conv.isLive && (
+                            {conv.id.startsWith('draft_') ? (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-blue-100 text-blue-800 border border-blue-300">
+                                New Inquiry
+                              </span>
+                            ) : conv.isLive ? (
                               <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
                                 Live
                               </span>
-                            )}
+                            ) : null}
                           </div>
                           <span className="text-[10px] text-slate-400 font-medium shrink-0">
                             {conv.lastMessageTime}

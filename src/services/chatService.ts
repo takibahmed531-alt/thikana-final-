@@ -203,6 +203,57 @@ export async function startConversation(
   }
 }
 
+/**
+ * Starts or retrieves an existing conversation between a tenant and landlord for a property,
+ * and immediately sends the first message inside the messages subcollection.
+ *
+ * @param tenantUid UID of the prospective tenant (sender of the initial message)
+ * @param landlordUid UID of the property landlord
+ * @param propertyId The unique property identifier
+ * @param propertyDetails Optional summary of property (title, rent, location, image)
+ * @param messageText The initial message text to send
+ * @returns Promise resolving to the conversation ID, conversation document, and sent message
+ */
+export async function startConversationAndSendMessage(
+  tenantUid: string,
+  landlordUid: string,
+  propertyId: string,
+  propertyDetails?: PropertySummary,
+  messageText?: string
+): Promise<{
+  conversationId: string;
+  conversation: Conversation;
+  message?: ChatMessage;
+  isNew: boolean;
+}> {
+  try {
+    if (!tenantUid || !landlordUid || !propertyId) {
+      throw new Error('tenantUid, landlordUid, and propertyId are required to start a conversation.');
+    }
+
+    // 1. Check if conversation already exists or create a new one
+    const convResult = await startConversation(propertyId, landlordUid, tenantUid, propertyDetails);
+    const { conversationId, conversation, isNew } = convResult;
+
+    // 2. Send the initial message if message text is provided
+    let sentMsg: ChatMessage | undefined;
+    const trimmedMessage = (messageText || '').trim();
+    if (trimmedMessage) {
+      sentMsg = await sendMessage(conversationId, tenantUid, trimmedMessage);
+    }
+
+    return {
+      conversationId,
+      conversation,
+      message: sentMsg,
+      isNew,
+    };
+  } catch (error) {
+    console.error('Error starting conversation and sending message:', error);
+    throw error;
+  }
+}
+
 // ----------------------------------------------------------------------
 // Task 3: Send Message in Conversation Subcollection
 // ----------------------------------------------------------------------
