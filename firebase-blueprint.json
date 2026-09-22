@@ -546,6 +546,9 @@
     "/notificationLogs/{logId}": {
       "schema": "NotificationLog",
       "description": "Logs of automated email alert dispatches readable by recipient user."
+    },
+    "/test/{docId}": {
+      "description": "Health check endpoint for connection verification."
     }
   }
 }

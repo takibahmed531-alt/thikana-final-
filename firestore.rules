@@ -271,5 +271,11 @@ service cloud.firestore {
 
       allow update, delete: if false;
     }
+
+    // 9. 'test'
+    // Connection health-check verification
+    match /test/{docId} {
+      allow read: if true;
+    }
   }
 }
