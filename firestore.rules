@@ -97,6 +97,28 @@ service cloud.firestore {
         && data.createdAt is timestamp;
     }
 
+    function isValidChatMessage(data, messageId) {
+      return data.messageId == messageId
+        && data.senderUid == request.auth.uid
+        && data.text is string
+        && data.text.size() <= 2000
+        && (!('imageUrl' in data) || data.imageUrl == null || (data.imageUrl is string && data.imageUrl.size() <= 1000));
+    }
+
+    function isValidSupportTicket(data, ticketId) {
+      return data.keys().hasAll(['ticketId', 'userUid', 'email', 'subject', 'message', 'createdAt', 'status'])
+        && data.keys().hasOnly(['ticketId', 'userUid', 'email', 'subject', 'message', 'createdAt', 'status'])
+        && isValidId(data.ticketId)
+        && data.ticketId == ticketId
+        && isValidId(data.userUid)
+        && data.userUid == request.auth.uid
+        && data.email is string && data.email.size() > 0 && data.email.size() <= 200
+        && data.subject is string && data.subject.size() > 0 && data.subject.size() <= 200
+        && data.message is string && data.message.size() > 0 && data.message.size() <= 2000
+        && (data.createdAt is string || data.createdAt is timestamp)
+        && (data.status in ['open', 'in_progress', 'resolved', 'closed']);
+    }
+
     // ----------------------------------------------------
     // Collection Rules
     // ----------------------------------------------------
@@ -164,11 +186,15 @@ service cloud.firestore {
 
       allow create: if isSignedIn()
         && (request.auth.uid in incoming().participants)
-        && incoming().participants.size() == 2;
+        && incoming().participants.size() == 2
+        && (!('deletedBy' in incoming()) || (incoming().deletedBy is list && incoming().deletedBy.size() <= 2))
+        && (!('starredBy' in incoming()) || (incoming().starredBy is list && incoming().starredBy.size() <= 2));
 
       allow update: if isSignedIn()
         && (request.auth.uid in resource.data.participants)
-        && incoming().participants == existing().participants;
+        && incoming().participants == existing().participants
+        && (!('deletedBy' in incoming()) || (incoming().deletedBy is list && incoming().deletedBy.size() <= 2))
+        && (!('starredBy' in incoming()) || (incoming().starredBy is list && incoming().starredBy.size() <= 2));
 
       allow delete: if false;
 
@@ -178,8 +204,8 @@ service cloud.firestore {
           && (request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants);
 
         allow create: if isSignedIn()
-          && incoming().senderUid == request.auth.uid
-          && (request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants);
+          && (request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants)
+          && isValidChatMessage(incoming(), messageId);
 
         allow update, delete: if false;
       }
@@ -212,6 +238,19 @@ service cloud.firestore {
         && incoming().createdAt is timestamp;
 
       allow update, delete: if isSignedIn() && resource.data.userUid == request.auth.uid;
+    }
+
+    // 7. 'supportTickets'
+    // Allow authenticated users to create support tickets and read their own tickets
+    match /supportTickets/{ticketId} {
+      allow read: if isSignedIn() && resource.data.userUid == request.auth.uid;
+
+      allow create: if isSignedIn()
+        && incoming().userUid == request.auth.uid
+        && incoming().ticketId == ticketId
+        && isValidSupportTicket(incoming(), ticketId);
+
+      allow update, delete: if false;
     }
   }
 }

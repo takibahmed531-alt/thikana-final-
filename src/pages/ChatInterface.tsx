@@ -17,6 +17,8 @@ import {
   Loader2,
   Radio,
   Flag,
+  Star,
+  Trash2,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import ReportModal from '../components/ReportModal';
@@ -24,6 +26,8 @@ import {
   subscribeToUserConversations,
   subscribeToMessages,
   sendMessage as sendFirebaseMessage,
+  softDeleteConversation,
+  toggleStarConversation,
   Conversation as LiveConversation,
   ChatMessage,
 } from '../services/chatService';
@@ -54,6 +58,8 @@ interface Conversation {
   lastMessageTime: string;
   unreadCount: number;
   messages: Message[];
+  deletedBy?: string[];
+  starredBy?: string[];
 }
 
 const DUMMY_CONVERSATIONS: Conversation[] = [
@@ -212,9 +218,23 @@ export default function ChatInterface() {
   const [inputText, setInputText] = useState('');
   const [attachedImage, setAttachedImage] = useState<string | null>(null);
   const [isReportOpen, setIsReportOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const hasInitializedActiveChat = useRef(false);
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Listen to user state: if !user (user logs out), immediately clear activeChatId, liveConversations, and dummyConversations
+  useEffect(() => {
+    if (!user) {
+      setActiveChatId('');
+      setLiveConversations([]);
+      setDummyConversations([]);
+      hasInitializedActiveChat.current = false;
+    } else {
+      setDummyConversations((prev) => (prev.length === 0 ? DUMMY_CONVERSATIONS : prev));
+    }
+  }, [user]);
 
   // Subscribe to live conversations for current authenticated user
   useEffect(() => {
@@ -274,30 +294,114 @@ export default function ChatInterface() {
         lastMessageTime: timeStr,
         unreadCount: 0,
         messages: [],
+        deletedBy: liveConv.deletedBy || [],
+        starredBy: liveConv.starredBy || [],
       };
     });
   }, [liveConversations, user?.uid]);
 
-  // Combine live conversations first, followed by DUMMY_CONVERSATIONS
+  // Combine live conversations first, followed by dummyConversations: filter deletedBy and sort starredBy to top
   const allConversations: Conversation[] = useMemo(() => {
-    return [...mappedLiveConversations, ...dummyConversations];
-  }, [mappedLiveConversations, dummyConversations]);
+    const combined = [...mappedLiveConversations, ...dummyConversations];
+
+    // Filter out conversations soft-deleted by current user
+    const notDeleted = user?.uid
+      ? combined.filter((c) => !c.deletedBy?.includes(user.uid))
+      : combined;
+
+    // Sort so that conversations starred by current user always appear at the top
+    return notDeleted.sort((a, b) => {
+      if (!user?.uid) return 0;
+      const aStarred = a.starredBy?.includes(user.uid) ? 1 : 0;
+      const bStarred = b.starredBy?.includes(user.uid) ? 1 : 0;
+      return bStarred - aStarred;
+    });
+  }, [mappedLiveConversations, dummyConversations, user?.uid]);
 
   // Sync activeChatId when URL search param changes or active chat isn't initialized
   useEffect(() => {
+    if (!user) return;
     if (urlChatId && allConversations.some((c) => c.id === urlChatId)) {
       setActiveChatId(urlChatId);
-    } else if (!activeChatId && allConversations.length > 0) {
+      hasInitializedActiveChat.current = true;
+    } else if (!hasInitializedActiveChat.current && allConversations.length > 0) {
       setActiveChatId(allConversations[0].id);
+      hasInitializedActiveChat.current = true;
     }
-  }, [urlChatId, allConversations, activeChatId]);
+  }, [urlChatId, allConversations, user]);
+
+  // Close options menu if active chat changes
+  useEffect(() => {
+    setIsMenuOpen(false);
+  }, [activeChatId]);
 
   // Current active conversation
-  const activeConversation =
-    allConversations.find((c) => c.id === activeChatId) || allConversations[0];
+  const activeConversation = allConversations.find((c) => c.id === activeChatId);
 
   // Determine whether current active conversation is from Firestore live data
   const isLiveChat = Boolean(activeConversation?.isLive);
+
+  const isCurrentStarred = Boolean(
+    user?.uid && activeConversation?.starredBy?.includes(user.uid)
+  );
+
+  const handleToggleStar = async () => {
+    if (!user || !activeConversation) return;
+    setIsMenuOpen(false);
+    const targetId = activeConversation.id;
+
+    if (isLiveChat) {
+      try {
+        await toggleStarConversation(targetId, user.uid);
+      } catch (err) {
+        console.error('Error toggling star on conversation:', err);
+      }
+    } else {
+      setDummyConversations((prev) =>
+        prev.map((c) => {
+          if (c.id === targetId) {
+            const starred = c.starredBy || [];
+            const isStarred = starred.includes(user.uid);
+            return {
+              ...c,
+              starredBy: isStarred
+                ? starred.filter((u) => u !== user.uid)
+                : [...starred, user.uid],
+            };
+          }
+          return c;
+        })
+      );
+    }
+  };
+
+  const handleDeleteConversation = async () => {
+    if (!user || !activeConversation) return;
+    setIsMenuOpen(false);
+    const targetId = activeConversation.id;
+    setActiveChatId('');
+    setSearchParams({});
+
+    if (isLiveChat) {
+      try {
+        await softDeleteConversation(targetId, user.uid);
+      } catch (err) {
+        console.error('Error soft-deleting conversation:', err);
+      }
+    } else {
+      setDummyConversations((prev) =>
+        prev.map((c) => {
+          if (c.id === targetId) {
+            return {
+              ...c,
+              deletedBy: [...(c.deletedBy || []), user.uid],
+            };
+          }
+          return c;
+        })
+      );
+    }
+  };
 
   // Subscribe to real-time messages when active conversation is a live Firebase conversation
   useEffect(() => {
@@ -366,6 +470,7 @@ export default function ChatInterface() {
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) return;
     if (!inputText.trim() && !attachedImage) return;
 
     const textToSend = inputText.trim();
@@ -374,10 +479,6 @@ export default function ChatInterface() {
     setAttachedImage(null);
 
     if (isLiveChat) {
-      if (!user) {
-        alert('Please sign in to send messages in live conversations.');
-        return;
-      }
       setIsSending(true);
       try {
         await sendFirebaseMessage(activeChatId, user.uid, textToSend, imageToSend);
@@ -413,6 +514,7 @@ export default function ChatInterface() {
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!user) return;
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
@@ -524,9 +626,15 @@ export default function ChatInterface() {
                         </div>
 
                         {/* Property Tag */}
-                        <div className="flex items-center gap-1 text-[11px] text-slate-500 truncate mb-1">
+                        <div className="flex items-center gap-1.5 text-[11px] text-slate-500 truncate mb-1">
                           <Building2 className="w-3 h-3 text-slate-400 shrink-0" />
                           <span className="truncate font-medium">{conv.propertyTitle}</span>
+                          {user?.uid && conv.starredBy?.includes(user.uid) && (
+                            <Star
+                              className="w-3 h-3 fill-amber-400 text-amber-500 shrink-0"
+                              aria-label="Starred conversation"
+                            />
+                          )}
                         </div>
 
                         {/* Last Message Snippet & Unread Counter */}
@@ -602,6 +710,11 @@ export default function ChatInterface() {
                             <BadgeCheck className="w-4 h-4 fill-emerald-50" />
                           </span>
                         )}
+                        {isCurrentStarred && (
+                          <span title="Starred conversation" className="inline-flex items-center text-amber-500">
+                            <Star className="w-4 h-4 fill-amber-400 text-amber-500" />
+                          </span>
+                        )}
                         <span className="hidden sm:inline-block px-2 py-0.5 bg-slate-100 text-slate-600 text-[10px] font-medium rounded-md">
                           {activeConversation.user.role}
                         </span>
@@ -643,6 +756,61 @@ export default function ChatInterface() {
                     >
                       <Flag className="w-4 h-4" />
                     </button>
+
+                    {/* Actions Dropdown Menu */}
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setIsMenuOpen((prev) => !prev)}
+                        className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg cursor-pointer transition-colors"
+                        title="Conversation options"
+                        aria-label="Conversation options"
+                        aria-expanded={isMenuOpen}
+                      >
+                        <MoreVertical className="w-4 h-4" />
+                      </button>
+
+                      {isMenuOpen && (
+                        <>
+                          {/* Invisible Backdrop to close menu on outside click */}
+                          <div
+                            className="fixed inset-0 z-20"
+                            onClick={() => setIsMenuOpen(false)}
+                          />
+
+                          {/* Dropdown Menu */}
+                          <div className="absolute right-0 mt-1.5 w-56 bg-white rounded-xl shadow-lg border border-slate-200 py-1 z-30 divide-y divide-slate-100 text-xs">
+                            <div className="py-1">
+                              <button
+                                type="button"
+                                onClick={handleToggleStar}
+                                className="w-full px-3.5 py-2 text-left flex items-center gap-2.5 hover:bg-slate-50 text-slate-700 transition-colors cursor-pointer"
+                              >
+                                <Star
+                                  className={`w-4 h-4 ${
+                                    isCurrentStarred
+                                      ? 'fill-amber-400 text-amber-500'
+                                      : 'text-slate-400'
+                                  }`}
+                                />
+                                <span>{isCurrentStarred ? 'Unstar Conversation' : 'Star / Unstar Conversation'}</span>
+                              </button>
+                            </div>
+
+                            <div className="py-1">
+                              <button
+                                type="button"
+                                onClick={handleDeleteConversation}
+                                className="w-full px-3.5 py-2 text-left flex items-center gap-2.5 hover:bg-rose-50 text-rose-600 transition-colors cursor-pointer font-medium"
+                              >
+                                <Trash2 className="w-4 h-4 text-rose-500" />
+                                <span>Delete Conversation</span>
+                              </button>
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </header>
 
@@ -774,8 +942,14 @@ export default function ChatInterface() {
                     <button
                       key={idx}
                       type="button"
-                      onClick={() => setInputText(chip)}
-                      className="shrink-0 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
+                      disabled={!user}
+                      onClick={() => {
+                        if (!user) return;
+                        setInputText(chip);
+                      }}
+                      className={`shrink-0 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 transition-colors ${
+                        !user ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-200'
+                      }`}
                     >
                       {chip}
                     </button>
@@ -795,15 +969,24 @@ export default function ChatInterface() {
                     ref={fileInputRef}
                     onChange={handleImageUpload}
                     accept="image/*"
+                    disabled={!user}
                     className="hidden"
                   />
 
                   {/* Attachment Icon Button */}
                   <button
                     type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="p-2.5 rounded-xl text-slate-500 hover:text-slate-700 hover:bg-slate-100 active:scale-95 transition-all"
-                    title="Attach Property Image or Document"
+                    disabled={!user}
+                    onClick={() => {
+                      if (!user) return;
+                      fileInputRef.current?.click();
+                    }}
+                    className={`p-2.5 rounded-xl transition-all ${
+                      !user
+                        ? 'text-slate-300 cursor-not-allowed opacity-50'
+                        : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100 active:scale-95'
+                    }`}
+                    title={!user ? 'Please sign in to attach files' : 'Attach Property Image or Document'}
                     aria-label="Attach file"
                   >
                     <Paperclip className="w-5 h-5" />
@@ -814,15 +997,20 @@ export default function ChatInterface() {
                     type="text"
                     value={inputText}
                     onChange={(e) => setInputText(e.target.value)}
-                    placeholder="Type your message to landlord..."
-                    className="flex-1 bg-slate-100 text-slate-800 placeholder-slate-400 rounded-xl px-4 py-2.5 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white focus:border-blue-600 transition-all border border-transparent"
+                    disabled={!user}
+                    placeholder={!user ? 'Please sign in to send messages...' : 'Type your message to landlord...'}
+                    className={`flex-1 rounded-xl px-4 py-2.5 text-xs sm:text-sm focus:outline-none transition-all border ${
+                      !user
+                        ? 'bg-slate-100 text-slate-400 placeholder-slate-400 cursor-not-allowed border-slate-200'
+                        : 'bg-slate-100 text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-blue-500/20 focus:bg-white focus:border-blue-600 border-transparent'
+                    }`}
                   />
 
                   {/* Primary Send Button */}
                   <button
                     type="submit"
-                    disabled={(!inputText.trim() && !attachedImage) || isSending}
-                    className="p-2.5 sm:px-4 sm:py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white font-semibold flex items-center gap-1.5 transition-all shadow-sm shadow-blue-500/20 active:scale-95 cursor-pointer"
+                    disabled={!user || (!inputText.trim() && !attachedImage) || isSending}
+                    className="p-2.5 sm:px-4 sm:py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white font-semibold flex items-center gap-1.5 transition-all shadow-sm shadow-blue-500/20 active:scale-95 cursor-pointer disabled:cursor-not-allowed"
                     aria-label="Send message"
                   >
                     {isSending ? (

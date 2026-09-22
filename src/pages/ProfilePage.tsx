@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import {
   User as UserIcon,
   Shield,
+  ShieldAlert,
   Lock,
   CheckCircle2,
   AlertCircle,
   LogOut,
   Save,
+  Key,
   KeyRound,
   Home,
   Check,
@@ -14,17 +17,34 @@ import {
   Moon,
   Sun,
   Bell,
+  Link2,
+  Loader2,
+  Mail,
+  LifeBuoy,
+  HelpCircle,
+  BookOpen,
+  MessageSquareHeart,
+  ChevronRight,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { usePreferences } from '../context/PreferencesContext';
 import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '../firebase';
+import { sendEmailVerification } from 'firebase/auth';
+import { auth, db } from '../firebase';
 import { handleFirestoreError, OperationType } from '../services/firestoreErrors';
 import { UserRole } from '../types';
 
 export default function ProfilePage() {
-  const { user, publicProfile, privateUser, loading, signInWithGoogle, signOut, refreshProfile } =
-    useAuth();
+  const {
+    user,
+    publicProfile,
+    privateUser,
+    loading,
+    openAuthModal,
+    linkGoogleAccount,
+    signOut,
+    refreshProfile,
+  } = useAuth();
   const { theme, notificationsEnabled, toggleTheme, toggleNotifications } = usePreferences();
 
   const [displayName, setDisplayName] = useState('');
@@ -36,12 +56,75 @@ export default function ProfilePage() {
 
   const [savingPublic, setSavingPublic] = useState(false);
   const [savingPrivate, setSavingPrivate] = useState(false);
+  const [linkingGoogle, setLinkingGoogle] = useState(false);
+  const [sendingVerification, setSendingVerification] = useState(false);
+  const [verificationSuccessMsg, setVerificationSuccessMsg] = useState<string | null>(null);
+  const [verificationErrorMsg, setVerificationErrorMsg] = useState<string | null>(null);
   const [publicMsg, setPublicMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(
     null
   );
   const [privateMsg, setPrivateMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(
     null
   );
+  const [linkMsg, setLinkMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(
+    null
+  );
+
+  const isEmailUnverified = Boolean(
+    user && !user.emailVerified && user.email && !user.email.endsWith('@thikana.app')
+  );
+
+  const handleResendVerification = async () => {
+    if (!auth.currentUser) return;
+    setSendingVerification(true);
+    setVerificationSuccessMsg(null);
+    setVerificationErrorMsg(null);
+    try {
+      await sendEmailVerification(auth.currentUser);
+      setVerificationSuccessMsg('Verification email sent!');
+      setTimeout(() => {
+        setVerificationSuccessMsg(null);
+      }, 6000);
+    } catch (err: any) {
+      console.error('Error sending verification email:', err);
+      if (err?.code === 'auth/too-many-requests') {
+        setVerificationErrorMsg('Too many requests. Please wait a few moments before trying again.');
+      } else {
+        setVerificationErrorMsg(err?.message || 'Failed to send verification email.');
+      }
+    } finally {
+      setSendingVerification(false);
+    }
+  };
+
+  const isGoogleLinked = Boolean(
+    user?.providerData?.some((p) => p.providerId === 'google.com')
+  );
+
+  const linkedEmail =
+    user?.providerData?.find((p) => p.providerId === 'google.com')?.email ||
+    user?.email ||
+    '';
+
+  const handleLinkGoogle = async () => {
+    setLinkingGoogle(true);
+    setLinkMsg(null);
+    try {
+      await linkGoogleAccount();
+      setLinkMsg({
+        type: 'success',
+        text: 'Google account linked successfully! You can now use Google for recovery and instant sign-in.',
+      });
+      await refreshProfile();
+    } catch (err: any) {
+      setLinkMsg({
+        type: 'error',
+        text: err?.message || 'Failed to link Google account. Please try again.',
+      });
+    } finally {
+      setLinkingGoogle(false);
+    }
+  };
 
   useEffect(() => {
     if (publicProfile) {
@@ -151,18 +234,18 @@ export default function ProfilePage() {
           <div className="max-w-md mx-auto space-y-2">
             <h2 className="text-xl font-bold text-slate-900">Sign in to Thikana</h2>
             <p className="text-sm text-slate-500">
-              Sign in with your Google account to post verified rental listings, connect with
+              Sign in with your email, phone number, or social account to post verified rental listings, connect with
               landlords, and save favourite apartments.
             </p>
           </div>
 
           <button
             type="button"
-            onClick={() => signInWithGoogle()}
+            onClick={() => openAuthModal('signin')}
             className="inline-flex items-center justify-center gap-2.5 px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm shadow-sm transition-all cursor-pointer hover:shadow-emerald-600/20 hover:shadow-md"
           >
             <KeyRound className="w-4 h-4" />
-            Continue with Google
+            Sign In / Create Account
           </button>
 
           {/* Privacy Separation Info */}
@@ -194,6 +277,59 @@ export default function ProfilePage() {
       ) : (
         /* When Logged In */
         <div className="space-y-6">
+          {/* Prominent Email Verification Warning Banner */}
+          {isEmailUnverified && (
+            <div className="bg-amber-50 border border-amber-300/80 rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-100 border border-amber-200 flex items-center justify-center shrink-0 text-amber-700 mt-0.5 sm:mt-0">
+                  <Mail className="w-5 h-5" />
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-amber-800 bg-amber-200/80 px-2 py-0.5 rounded-md">
+                      Action Required
+                    </span>
+                    {verificationSuccessMsg && (
+                      <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-800 bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded-md">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                        {verificationSuccessMsg}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs sm:text-sm font-medium text-amber-900 leading-snug">
+                    Your email address is not verified. Please check your inbox to verify your account and secure your identity.
+                  </p>
+                  {verificationErrorMsg && (
+                    <p className="text-xs text-rose-700 font-medium">
+                      {verificationErrorMsg}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="shrink-0 w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={handleResendVerification}
+                  disabled={sendingVerification}
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-600 hover:bg-amber-700 active:scale-95 text-white rounded-xl text-xs font-semibold shadow-xs transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {sendingVerification ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Sending Link...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Mail className="w-3.5 h-3.5" />
+                      <span>Resend Verification Link</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* User Identity Banner */}
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
@@ -408,7 +544,93 @@ export default function ProfilePage() {
             </form>
           </div>
 
-          {/* Section 3: App Settings */}
+          {/* Section 3: Account Security & Recovery */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
+            <div className="flex items-center gap-2.5 text-slate-900 font-bold">
+              <ShieldAlert className="w-5 h-5 text-emerald-600" />
+              <h3 className="text-base font-bold text-slate-900">Account Security & Recovery</h3>
+            </div>
+            <p className="text-xs text-slate-500">
+              Manage external identity verification to safeguard your account against lost passwords or phone numbers.
+            </p>
+
+            {linkMsg && linkMsg.type === 'error' && (
+              <div className="p-3 rounded-xl text-xs flex items-center gap-2 bg-rose-50 text-rose-800 border border-rose-200">
+                <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                <span>{linkMsg.text}</span>
+              </div>
+            )}
+
+            {user.providerData.some((p) => p.providerId === 'google.com') ? (
+              /* Linked: Success message with green checkmark and linked email */
+              <div className="p-4 rounded-xl border border-emerald-200 bg-emerald-50/70 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-start sm:items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-white border border-emerald-200 flex items-center justify-center shrink-0 shadow-xs text-emerald-600">
+                    <CheckCircle2 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-semibold text-emerald-950 flex items-center gap-2">
+                      <span>Google Account Linked for Recovery</span>
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-200/80 text-emerald-900">
+                        <Check className="w-3 h-3" /> Active
+                      </span>
+                    </div>
+                    {linkedEmail && (
+                      <p className="text-xs text-emerald-700 font-medium mt-0.5">
+                        {linkedEmail}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div className="shrink-0">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 text-white font-medium text-xs shadow-xs">
+                    <Shield className="w-3.5 h-3.5" /> Protected
+                  </span>
+                </div>
+              </div>
+            ) : (
+              /* Not Linked: Warning message and Link Google Account button */
+              <div className="space-y-4">
+                <div className="p-4 rounded-xl border border-amber-200 bg-amber-50/80 flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <p className="text-xs sm:text-sm text-amber-900 font-medium leading-relaxed">
+                      No recovery email linked. If you forget your password, you may lose access.
+                    </p>
+                    <p className="text-[11px] text-amber-700">
+                      Link your Google account to enable one-click recovery and permanent sign-in access.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+                  <div className="text-xs text-slate-500">
+                    Instant recovery account via Google authentication.
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleLinkGoogle}
+                    disabled={linkingGoogle}
+                    className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl text-xs font-semibold shadow-xs transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {linkingGoogle ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Linking Google Account...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Key className="w-4 h-4" />
+                        <span>Link Google Account</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Section 4: App Settings */}
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-5">
             <div className="flex items-center gap-2 text-slate-900 font-bold">
               <Settings className="w-5 h-5 text-emerald-600" />
@@ -500,6 +722,100 @@ export default function ProfilePage() {
           </div>
         </div>
       )}
+
+      {/* Help & Legal Card (Always visible at the bottom for both logged-in and guest users) */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-xs mt-6 transition-colors">
+        <h2 className="text-base font-semibold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+          <LifeBuoy className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+          <span>Help &amp; Legal</span>
+        </h2>
+
+        <div className="divide-y divide-slate-100 dark:divide-slate-800 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden bg-white dark:bg-slate-900">
+          {/* User Manual */}
+          <Link
+            to="/manual"
+            className="flex items-center justify-between p-4 hover:bg-slate-50 dark:hover:bg-slate-800/60 active:bg-slate-100 dark:active:bg-slate-800 transition-colors group cursor-pointer"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-950/80 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                <BookOpen className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="text-sm font-semibold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                  User Manual
+                </div>
+                <div className="text-xs text-slate-500 dark:text-slate-400">
+                  Step-by-step guides to search, chat, and post ads
+                </div>
+              </div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 group-hover:translate-x-0.5 transition-all" />
+          </Link>
+
+          {/* FAQ */}
+          <Link
+            to="/faq"
+            className="flex items-center justify-between p-4 hover:bg-slate-50 dark:hover:bg-slate-800/60 active:bg-slate-100 dark:active:bg-slate-800 transition-colors group cursor-pointer"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-950/80 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                <HelpCircle className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="text-sm font-semibold text-slate-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
+                  FAQ
+                </div>
+                <div className="text-xs text-slate-500 dark:text-slate-400">
+                  Frequently asked questions about accounts &amp; listings
+                </div>
+              </div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-amber-600 dark:group-hover:text-amber-400 group-hover:translate-x-0.5 transition-all" />
+          </Link>
+
+          {/* Support Center */}
+          <Link
+            to="/support"
+            className="flex items-center justify-between p-4 hover:bg-slate-50 dark:hover:bg-slate-800/60 active:bg-slate-100 dark:active:bg-slate-800 transition-colors group cursor-pointer"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-rose-100 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                <MessageSquareHeart className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="text-sm font-semibold text-slate-900 dark:text-white group-hover:text-rose-600 dark:group-hover:text-rose-400 transition-colors">
+                  Support Center
+                </div>
+                <div className="text-xs text-slate-500 dark:text-slate-400">
+                  Submit a ticket or get help from our care team
+                </div>
+              </div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-rose-600 dark:group-hover:text-rose-400 group-hover:translate-x-0.5 transition-all" />
+          </Link>
+
+          {/* Privacy Policy */}
+          <Link
+            to="/privacy"
+            className="flex items-center justify-between p-4 hover:bg-slate-50 dark:hover:bg-slate-800/60 active:bg-slate-100 dark:active:bg-slate-800 transition-colors group cursor-pointer"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-950/80 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                <ShieldAlert className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="text-sm font-semibold text-slate-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
+                  Privacy Policy
+                </div>
+                <div className="text-xs text-slate-500 dark:text-slate-400">
+                  NID and contact isolation security standards
+                </div>
+              </div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-purple-600 dark:group-hover:text-purple-400 group-hover:translate-x-0.5 transition-all" />
+          </Link>
+        </div>
+      </div>
     </div>
   );
 }

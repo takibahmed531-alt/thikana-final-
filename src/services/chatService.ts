@@ -8,6 +8,7 @@ import {
   doc,
   setDoc,
   getDocs,
+  getDoc,
   query,
   where,
   orderBy,
@@ -16,6 +17,8 @@ import {
   onSnapshot,
   Unsubscribe,
   limit,
+  arrayUnion,
+  arrayRemove,
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { handleFirestoreError, OperationType } from './firestoreErrors';
@@ -52,6 +55,8 @@ export interface Conversation {
   lastMessage?: string;
   lastMessageSenderUid?: string;
   lastMessageTimestamp?: any;
+  deletedBy?: string[];
+  starredBy?: string[];
   createdAt: any;
   updatedAt: any;
 }
@@ -312,4 +317,79 @@ export function subscribeToMessages(
       }
     }
   );
+}
+
+// ----------------------------------------------------------------------
+// Task 4: Soft Deletion & Starring
+// ----------------------------------------------------------------------
+
+/**
+ * Soft-deletes a conversation for a specific user by adding their UID to the deletedBy array.
+ *
+ * @param conversationId The ID of the conversation
+ * @param userUid The UID of the user who wants to hide/delete the conversation
+ * @returns Promise resolving to operation status
+ */
+export async function softDeleteConversation(
+  conversationId: string,
+  userUid: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    if (!conversationId || !userUid) {
+      throw new Error('conversationId and userUid are required to soft-delete a conversation.');
+    }
+    const convDocRef = doc(db, 'conversations', conversationId);
+    await updateDoc(convDocRef, {
+      deletedBy: arrayUnion(userUid),
+      updatedAt: serverTimestamp(),
+    });
+    return { success: true };
+  } catch (err: any) {
+    console.error(`Error soft-deleting conversation (${conversationId}):`, err);
+    handleFirestoreError(err, OperationType.UPDATE, `conversations/${conversationId}`);
+    return { success: false, error: err?.message || 'Failed to soft delete conversation.' };
+  }
+}
+
+/**
+ * Toggles the starred status of a conversation for a specific user.
+ * Checks if the userUid is in the starredBy array and toggles it using arrayUnion or arrayRemove.
+ *
+ * @param conversationId The ID of the conversation
+ * @param userUid The UID of the user toggling the star
+ * @returns Promise resolving to operation status and new starred state
+ */
+export async function toggleStarConversation(
+  conversationId: string,
+  userUid: string
+): Promise<{ success: boolean; isStarred: boolean; error?: string }> {
+  try {
+    if (!conversationId || !userUid) {
+      throw new Error('conversationId and userUid are required to toggle star.');
+    }
+    const convDocRef = doc(db, 'conversations', conversationId);
+    const convSnap = await getDoc(convDocRef);
+    if (!convSnap.exists()) {
+      throw new Error('Conversation does not exist.');
+    }
+
+    const data = convSnap.data() as Conversation;
+    const starredBy = data.starredBy || [];
+    const isCurrentlyStarred = starredBy.includes(userUid);
+
+    await updateDoc(convDocRef, {
+      starredBy: isCurrentlyStarred ? arrayRemove(userUid) : arrayUnion(userUid),
+      updatedAt: serverTimestamp(),
+    });
+
+    return { success: true, isStarred: !isCurrentlyStarred };
+  } catch (err: any) {
+    console.error(`Error toggling star on conversation (${conversationId}):`, err);
+    handleFirestoreError(err, OperationType.UPDATE, `conversations/${conversationId}`);
+    return {
+      success: false,
+      isStarred: false,
+      error: err?.message || 'Failed to toggle star on conversation.',
+    };
+  }
 }

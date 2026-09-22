@@ -108,3 +108,38 @@ export interface Report {
   createdAt: any;
 }
 
+export interface PropertySummary {
+  propertyId?: string;
+  title?: string;
+  rentAmount?: number;
+  location?: string;
+  imageUrl?: string;
+}
+
+export interface Conversation {
+  id?: string;
+  conversationId: string;
+  propertyId: string;
+  landlordUid: string;
+  tenantUid: string;
+  participants: string[];
+  propertyDetails?: PropertySummary;
+  lastMessage?: string;
+  lastMessageSenderUid?: string;
+  lastMessageTimestamp?: any;
+  deletedBy?: string[];
+  starredBy?: string[];
+  createdAt: any;
+  updatedAt: any;
+}
+
+export interface SupportTicket {
+  ticketId: string;
+  userUid: string;
+  email: string;
+  subject: string;
+  message: string;
+  status: 'open' | 'in_progress' | 'resolved' | 'closed';
+  createdAt: string;
+}
+

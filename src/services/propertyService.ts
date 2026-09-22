@@ -302,12 +302,16 @@ export async function getProperties(
     }
 
     const properties: PropertyListing[] = [];
-    snapshot.forEach((docSnap) => {
-      properties.push(docSnap.data() as PropertyListing);
-    });
+    if (snapshot && !snapshot.empty) {
+      snapshot.forEach((docSnap) => {
+        properties.push(docSnap.data() as PropertyListing);
+      });
+    }
 
-    const newLastDoc = snapshot.docs.length > 0 ? snapshot.docs[snapshot.docs.length - 1] : null;
-    const hasMore = snapshot.docs.length === pageSize;
+    const newLastDoc = (snapshot && snapshot.docs && snapshot.docs.length > 0)
+      ? snapshot.docs[snapshot.docs.length - 1]
+      : null;
+    const hasMore = Boolean(snapshot && snapshot.docs && snapshot.docs.length === pageSize);
 
     return {
       success: true,

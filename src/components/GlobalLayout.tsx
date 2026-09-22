@@ -1,8 +1,13 @@
 import { Outlet } from 'react-router-dom';
 import TopNav from './TopNav';
 import BottomTab from './BottomTab';
+import Footer from './Footer';
+import AuthModal from './AuthModal';
+import { useAuth } from '../context/AuthContext';
 
 export default function GlobalLayout() {
+  const { isAuthModalOpen, closeAuthModal, authModalMode } = useAuth();
+
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 transition-colors duration-300 antialiased selection:bg-emerald-100 selection:text-emerald-900 dark:selection:bg-emerald-950 dark:selection:text-emerald-200">
       {/* Desktop Top Navbar (hidden on mobile, visible md and up) */}
@@ -14,8 +19,18 @@ export default function GlobalLayout() {
         <Outlet />
       </main>
 
+      {/* Footer with Legal & Support Links */}
+      <Footer />
+
       {/* Mobile Bottom Tab Bar (visible on mobile, hidden md and up) */}
       <BottomTab />
+
+      {/* Global Authentication Modal */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={closeAuthModal}
+        initialMode={authModalMode}
+      />
     </div>
   );
 }

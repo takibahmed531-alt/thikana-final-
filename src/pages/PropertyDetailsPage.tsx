@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { getPropertyById } from '../services/propertyService';
+import { useAuth } from '../context/AuthContext';
 import {
   MapPin,
   BadgeCheck,
@@ -134,6 +135,7 @@ const PROPERTY_DETAILS_DATA: Record<string, any> = {
 
 export default function PropertyDetailsPage() {
   const { id } = useParams<{ id: string }>();
+  const { user, openAuthModal } = useAuth();
   const [isSaved, setIsSaved] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -234,6 +236,9 @@ export default function PropertyDetailsPage() {
       ? `THK-${property.id.replace(/[^a-zA-Z0-9]/g, '').slice(0, 6).toUpperCase()}`
       : null;
 
+  const effectiveChatId =
+    property?.id === 'prop-2' ? 'c2' : property?.id === 'prop-3' ? 'c3' : 'c1';
+
   const handleCopyAdId = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -255,6 +260,7 @@ export default function PropertyDetailsPage() {
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) return;
     if (!chatMessage.trim()) return;
 
     setChatHistory((prev) => [
@@ -746,7 +752,7 @@ export default function PropertyDetailsPage() {
               </button>
 
               <Link
-                to="/messages?chatId=c1"
+                to={`/messages?chatId=${effectiveChatId}`}
                 className="w-full flex items-center justify-center gap-2 px-6 py-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition-colors"
               >
                 <span>Open Full Messenger</span>
@@ -798,7 +804,7 @@ export default function PropertyDetailsPage() {
               </div>
               <div className="flex items-center gap-1">
                 <Link
-                  to="/messages?chatId=c1"
+                  to={`/messages?chatId=${effectiveChatId}`}
                   className="p-1.5 rounded-full hover:bg-white/10 text-slate-300 hover:text-white transition-colors"
                   title="Expand to Full Messenger"
                 >
@@ -852,13 +858,33 @@ export default function PropertyDetailsPage() {
                 <button
                   key={i}
                   type="button"
-                  onClick={() => setChatMessage(suggestion)}
-                  className="shrink-0 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
+                  disabled={!user}
+                  onClick={() => {
+                    if (!user) return;
+                    setChatMessage(suggestion);
+                  }}
+                  className={`shrink-0 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 transition-colors ${
+                    !user ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-200 cursor-pointer'
+                  }`}
                 >
                   {suggestion}
                 </button>
               ))}
             </div>
+
+            {/* Guest Sign In Prompt */}
+            {!user && (
+              <div className="px-3.5 py-2 bg-emerald-50/90 border-t border-emerald-100 flex items-center justify-between text-xs text-emerald-950">
+                <span className="font-medium">Sign in to message this landlord</span>
+                <button
+                  type="button"
+                  onClick={() => openAuthModal('signin')}
+                  className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-lg font-semibold text-xs transition-all shadow-sm cursor-pointer"
+                >
+                  Sign in
+                </button>
+              </div>
+            )}
 
             {/* Message Input Form */}
             <form onSubmit={handleSendMessage} className="p-3 bg-white border-t border-slate-200 flex items-center gap-2">
@@ -866,13 +892,18 @@ export default function PropertyDetailsPage() {
                 type="text"
                 value={chatMessage}
                 onChange={(e) => setChatMessage(e.target.value)}
-                placeholder="Type your message to the owner..."
-                className="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
+                disabled={!user}
+                placeholder={!user ? 'Please sign in to send messages...' : 'Type your message to the owner...'}
+                className={`flex-1 px-4 py-2.5 rounded-xl text-xs sm:text-sm focus:outline-none transition-all border ${
+                  !user
+                    ? 'bg-slate-100 text-slate-400 placeholder-slate-400 cursor-not-allowed border-slate-200'
+                    : 'bg-slate-50 text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:bg-white focus:border-emerald-600 border-slate-200'
+                }`}
               />
               <button
                 type="submit"
-                disabled={!chatMessage.trim()}
-                className="p-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white transition-all shadow-sm"
+                disabled={!user || !chatMessage.trim()}
+                className="p-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white transition-all shadow-sm cursor-pointer disabled:cursor-not-allowed"
                 aria-label="Send message"
               >
                 <Send className="w-4 h-4" />

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { NavLink, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Building2,
   Search,
@@ -14,15 +14,26 @@ import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 
 export default function TopNav() {
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchParams] = useSearchParams();
+  const [searchQuery, setSearchQuery] = useState(() => searchParams.get('q') || '');
   const navigate = useNavigate();
-  const { user, publicProfile, signInWithGoogle, signOut, loading } = useAuth();
+  const { user, publicProfile, openAuthModal, signOut, loading } = useAuth();
   const { language, toggleLanguage, t } = useLanguage();
+
+  // Sync search input state if the URL's q param updates externally
+  useEffect(() => {
+    const q = searchParams.get('q');
+    if (q !== null) {
+      setSearchQuery(q);
+    }
+  }, [searchParams]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
       navigate(`/?q=${encodeURIComponent(searchQuery.trim())}`);
+    } else {
+      navigate('/');
     }
   };
 
@@ -189,10 +200,10 @@ export default function TopNav() {
             <button
               type="button"
               disabled={loading}
-              onClick={() => signInWithGoogle()}
-              className="flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 transition-colors duration-300 border border-slate-200 dark:border-slate-700 ml-1 cursor-pointer"
+              onClick={() => openAuthModal('signin')}
+              className="flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors duration-300 shadow-sm shadow-emerald-600/20 ml-1 cursor-pointer"
             >
-              <User className="w-4 h-4 text-emerald-600" />
+              <User className="w-4 h-4" />
               <span>{t('signIn')}</span>
             </button>
           )}

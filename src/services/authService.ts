@@ -5,8 +5,14 @@
 
 import {
   GoogleAuthProvider,
+  FacebookAuthProvider,
   signInWithPopup,
   signInWithPhoneNumber,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  updateProfile,
+  linkWithPopup,
+  sendEmailVerification,
   RecaptchaVerifier,
   ConfirmationResult,
   User,
@@ -20,6 +26,121 @@ import {
 import { auth, db } from '../firebase';
 import { AdditionalUserData, PublicProfile, PrivateUser, UserRole } from '../types';
 import { handleFirestoreError, OperationType } from './firestoreErrors';
+
+/**
+ * Task 2: Helper function to format email or phone identifier.
+ * If the identifier contains only numbers (or starts with '+'),
+ * appends '@thikana.app' to use it as a pseudo-email for OTP-less phone authentication.
+ * Otherwise, returns the email as is.
+ */
+export function formatIdentifier(identifier: string): string {
+  const trimmed = (identifier || '').trim();
+  const cleaned = trimmed.replace(/[\s-]/g, '');
+  if (cleaned.startsWith('+') || /^\d+$/.test(cleaned)) {
+    return `${cleaned}@thikana.app`;
+  }
+  return trimmed;
+}
+
+/**
+ * Task 3: Sign up with email or phone number (OTP-less).
+ * Formats the identifier, creates the user with password, updates the auth profile with the name,
+ * and synchronizes the new user to Firestore.
+ */
+export async function signUpWithEmailOrPhone(
+  identifier: string,
+  password: string,
+  name: string
+): Promise<UserCredential> {
+  try {
+    const formattedEmail = formatIdentifier(identifier);
+    const credential = await createUserWithEmailAndPassword(auth, formattedEmail, password);
+
+    // Update the auth profile with the provided name
+    if (name && name.trim()) {
+      await updateProfile(credential.user, {
+        displayName: name.trim(),
+      });
+    }
+
+    // Save and synchronize new user documents to Firestore
+    await saveNewUserToDatabase(credential.user, {
+      displayName: name.trim(),
+    });
+
+    // Check if the original identifier is a real email (and not a phone number pseudo-email ending in '@thikana.app')
+    const trimmed = (identifier || '').trim();
+    const isPseudoEmail = formattedEmail.endsWith('@thikana.app') || trimmed.endsWith('@thikana.app');
+    const isEmailAddress = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
+
+    if (isEmailAddress && !isPseudoEmail) {
+      try {
+        await sendEmailVerification(credential.user);
+      } catch (emailError: any) {
+        // Silently log any errors so it doesn't break the signup flow
+        console.warn('Silently caught email verification dispatch error:', emailError?.message || emailError);
+      }
+    }
+
+    return credential;
+  } catch (error: any) {
+    const isOpNotAllowed =
+      error?.code === 'auth/operation-not-allowed' ||
+      String(error?.message || '').includes('operation-not-allowed');
+    if (isOpNotAllowed) {
+      console.warn('Firebase Email/Password provider is not enabled on this project.');
+      error.message = 'Email & Password sign-up is not enabled on this Firebase project. Please use "Continue with Google" to sign in or create an account.';
+    } else {
+      console.warn('Sign-up attempt note:', error?.message || error);
+    }
+    throw error;
+  }
+}
+
+/**
+ * Task 4: Login with email or phone number (OTP-less).
+ * Formats the identifier and signs in with password.
+ */
+export async function loginWithEmailOrPhone(
+  identifier: string,
+  password: string
+): Promise<UserCredential> {
+  try {
+    const formattedEmail = formatIdentifier(identifier);
+    const credential = await signInWithEmailAndPassword(auth, formattedEmail, password);
+    return credential;
+  } catch (error: any) {
+    const isOpNotAllowed =
+      error?.code === 'auth/operation-not-allowed' ||
+      String(error?.message || '').includes('operation-not-allowed');
+    if (isOpNotAllowed) {
+      console.warn('Firebase Email/Password provider is not enabled on this project.');
+      error.message = 'Email & Password sign-in is not enabled on this Firebase project. Please use "Continue with Google" to sign in.';
+    } else {
+      console.warn('Login attempt note:', error?.message || error);
+    }
+    throw error;
+  }
+}
+
+/**
+ * Task 5: Sign in with Facebook.
+ * Triggers a popup with FacebookAuthProvider and synchronizes profile to database.
+ */
+export async function signInWithFacebook(additionalData?: AdditionalUserData): Promise<UserCredential> {
+  try {
+    const provider = new FacebookAuthProvider();
+    const credential = await signInWithPopup(auth, provider);
+
+    // Synchronize to Firestore (creates publicProfiles and privateUsers if new)
+    await saveNewUserToDatabase(credential.user, additionalData);
+
+    return credential;
+  } catch (error: any) {
+    console.error('Error during Facebook Sign-In:', error);
+    throw error;
+  }
+}
 
 /**
  * Task 1: Google Sign-In
@@ -39,6 +160,46 @@ export async function signInWithGoogle(additionalData?: AdditionalUserData): Pro
   } catch (error: any) {
     console.error('Error during Google Sign-In:', error);
     throw new Error(error?.message || 'Failed to authenticate with Google.');
+  }
+}
+
+/**
+ * Task 2: Links a Google account to an existing Phone/Email account for recovery purposes.
+ * Validates that auth.currentUser exists and executes linkWithPopup with GoogleAuthProvider.
+ */
+export async function linkGoogleAccount(): Promise<UserCredential> {
+  const currentUser = auth.currentUser;
+  if (!currentUser) {
+    throw new Error('No user is currently signed in. Please sign in before linking an account.');
+  }
+
+  try {
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+    const credential = await linkWithPopup(currentUser, provider);
+    return credential;
+  } catch (error: any) {
+    console.error('Error linking Google account:', error);
+    const code = error?.code;
+    if (code === 'auth/credential-already-in-use') {
+      throw new Error('This Google account is already linked to another user.');
+    }
+    if (code === 'auth/email-already-in-use') {
+      throw new Error('An account already exists with the email associated with this Google account.');
+    }
+    if (code === 'auth/provider-already-linked') {
+      throw new Error('A Google account is already linked to this profile.');
+    }
+    if (code === 'auth/popup-closed-by-user') {
+      throw new Error('Google linking popup was closed before completion.');
+    }
+    if (code === 'auth/cancelled-popup-request') {
+      throw new Error('Only one sign-in popup can be active at a time.');
+    }
+    if (code === 'auth/requires-recent-login') {
+      throw new Error('This operation is sensitive and requires recent authentication. Please sign in again and retry.');
+    }
+    throw new Error(error?.message || 'Failed to link Google account.');
   }
 }
 

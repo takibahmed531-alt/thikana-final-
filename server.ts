@@ -1,12 +1,19 @@
 import express from 'express';
 import path from 'path';
+import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI, Type } from '@google/genai';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
-const PORT = 3000;
+// Port configuration:
+// - In AI Studio development sandbox (CONTROL_PLANE_PORT is set): Nginx runs on 8080 and proxies to port 3000,
+//   so the dev server MUST listen on port 3000.
+// - In deployed Cloud Run production: Cloud Run routes external traffic directly to process.env.PORT (typically 8080)
+//   and executes deployment health checks against process.env.PORT.
+const isDevSandbox = Boolean(process.env.CONTROL_PLANE_PORT);
+const PORT = isDevSandbox ? 3000 : (Number(process.env.PORT) || 8080);
 
 // Reusable Gemini Client
 let genAIClient: GoogleGenAI | null = null;
@@ -94,8 +101,8 @@ async function startServer() {
   const app = express();
   app.use(express.json());
 
-  // Health check endpoint
-  app.get('/api/health', (_req, res) => {
+  // Health check endpoints (compatible with Cloud Run deployment probes)
+  app.get(['/api/health', '/healthz', '/health'], (_req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
   });
 
@@ -200,24 +207,56 @@ async function startServer() {
     }
   });
 
-  // Vite middleware setup
-  if (process.env.NODE_ENV !== 'production') {
+  // Vite middleware in development vs static serving in production
+  const isProduction = process.env.NODE_ENV === 'production' || !process.env.CONTROL_PLANE_PORT;
+
+  if (!isProduction) {
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',
     });
     app.use(vite.middlewares);
   } else {
-    const distPath = path.join(process.cwd(), 'dist');
+    let distPath = path.join(process.cwd(), 'dist');
+    if (!fs.existsSync(path.join(distPath, 'index.html'))) {
+      if (fs.existsSync(path.join(__dirname, 'index.html'))) {
+        distPath = __dirname;
+      } else if (fs.existsSync(path.join(__dirname, '..', 'dist', 'index.html'))) {
+        distPath = path.join(__dirname, '..', 'dist');
+      }
+    }
     app.use(express.static(distPath));
+    app.all('/api/*', (_req, res) => {
+      res.status(404).json({ error: 'Endpoint not found' });
+    });
     app.get('*', (_req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
+      const indexPath = path.join(distPath, 'index.html');
+      if (fs.existsSync(indexPath)) {
+        res.sendFile(indexPath);
+      } else {
+        res.status(200).send('<!doctype html><html><head><meta charset="UTF-8"><title>Thikana</title></head><body><div id="root"></div></body></html>');
+      }
     });
   }
 
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running on port ${PORT}`);
+    console.log(`Server running on port ${PORT} (devSandbox: ${isDevSandbox})`);
   });
+
+  // If running in deployed production on a port other than 3000 (e.g. 8080 on Cloud Run),
+  // also listen on 3000 as a secondary listener if available
+  if (!isDevSandbox && PORT !== 3000) {
+    try {
+      const secondaryServer = app.listen(3000, '0.0.0.0', () => {
+        console.log('Secondary listener active on port 3000');
+      });
+      secondaryServer.on('error', (err: any) => {
+        console.info('Secondary port 3000 note:', err?.code || err?.message);
+      });
+    } catch (err: any) {
+      console.info('Secondary listener error ignored:', err?.message);
+    }
+  }
 }
 
 startServer();

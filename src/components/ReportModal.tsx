@@ -39,7 +39,7 @@ export default function ReportModal({
   targetId,
   targetType,
 }: ReportModalProps) {
-  const { user, signInWithGoogle } = useAuth();
+  const { user, openAuthModal } = useAuth();
 
   const [selectedReason, setSelectedReason] = useState<string>(REPORT_REASONS[0].value);
   const [description, setDescription] = useState<string>('');
@@ -181,11 +181,11 @@ export default function ReportModal({
                     </p>
                     <button
                       type="button"
-                      onClick={signInWithGoogle}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs shadow-xs transition-colors"
+                      onClick={() => openAuthModal('signin')}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs shadow-xs transition-colors cursor-pointer"
                     >
                       <LogIn className="w-3.5 h-3.5" />
-                      <span>Sign in with Google</span>
+                      <span>Sign In</span>
                     </button>
                   </div>
                 </div>

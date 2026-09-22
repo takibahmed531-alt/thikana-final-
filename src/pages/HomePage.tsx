@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Search,
   X,
@@ -186,12 +187,21 @@ function mapListingToPropertyItem(p: PropertyListing): PropertyItem {
 }
 
 export default function HomePage() {
+  const [searchParams] = useSearchParams();
   const [searchArea, setSearchArea] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [liveProperties, setLiveProperties] = useState<PropertyItem[]>([]);
   const [lastVisibleDoc, setLastVisibleDoc] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
   const [hasMore, setHasMore] = useState<boolean>(false);
   const [loadingMore, setLoadingMore] = useState<boolean>(false);
+
+  // Check if there is a q parameter in the URL and set the searchArea state to that value automatically on page load
+  useEffect(() => {
+    const q = searchParams.get('q');
+    if (q) {
+      setSearchArea(q);
+    }
+  }, [searchParams]);
 
   // Authentication & Smart Search Alert state
   const { user, signInWithGoogle } = useAuth();

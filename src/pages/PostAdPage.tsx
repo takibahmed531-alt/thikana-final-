@@ -10,6 +10,9 @@ import {
   X,
   MapPin,
   Navigation,
+  Mail,
+  ShieldAlert,
+  ArrowRight,
 } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
@@ -119,6 +122,11 @@ function MapFlyController({ center }: { center: [number, number] }) {
 export default function PostAdPage() {
   const { user, signInWithGoogle } = useAuth();
   const navigate = useNavigate();
+
+  // Evaluate if user is logged in but has an unverified non-phone email address
+  const isUnverified = Boolean(
+    user && !user.emailVerified && user.email && !user.email.endsWith('@thikana.app')
+  );
 
   const [title, setTitle] = useState('');
   const [rentAmount, setRentAmount] = useState('');
@@ -246,6 +254,32 @@ export default function PostAdPage() {
           >
             Sign in with Google
           </button>
+        </div>
+      ) : isUnverified ? (
+        /* Email Verification Required Blocker UI */
+        <div className="bg-amber-50/90 border border-amber-300 rounded-2xl p-6 sm:p-8 text-center shadow-xs space-y-4">
+          <div className="w-14 h-14 rounded-2xl bg-amber-100 border border-amber-200 text-amber-700 flex items-center justify-center mx-auto shadow-xs">
+            <ShieldAlert className="w-7 h-7" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-amber-950 mb-2">
+              Email Verification Required
+            </h2>
+            <p className="text-sm text-amber-800/90 max-w-lg mx-auto leading-relaxed">
+              To prevent spam and ensure trust, landlords must verify their email address before posting ads. Please verify your account to proceed.
+            </p>
+          </div>
+          <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+            <button
+              type="button"
+              onClick={() => navigate('/profile')}
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 bg-amber-600 hover:bg-amber-700 active:scale-95 text-white rounded-xl text-sm font-semibold shadow-xs transition-all cursor-pointer"
+            >
+              <Mail className="w-4 h-4" />
+              <span>Go to Profile to Resend Verification Link</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-6">

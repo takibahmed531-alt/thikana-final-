@@ -330,6 +330,56 @@
         "status",
         "createdAt"
       ]
+    },
+    "SupportTicket": {
+      "title": "SupportTicket",
+      "description": "User submitted support request or help inquiry.",
+      "type": "object",
+      "properties": {
+        "ticketId": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Unique identifier of the support ticket."
+        },
+        "userUid": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Firebase Auth UID of the user who submitted the ticket."
+        },
+        "email": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "Email address for ticket updates and replies."
+        },
+        "subject": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "Topic or summary of the support request."
+        },
+        "message": {
+          "type": "string",
+          "maxLength": 2000,
+          "description": "Detailed explanation of the user's issue or question."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "ISO timestamp when the ticket was opened."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["open", "in_progress", "resolved", "closed"],
+          "description": "Current lifecycle status of the ticket."
+        }
+      },
+      "required": [
+        "ticketId",
+        "userUid",
+        "email",
+        "subject",
+        "message",
+        "createdAt",
+        "status"
+      ]
     }
   },
   "firestore": {
@@ -356,6 +406,10 @@
     "/reports/{reportId}": {
       "schema": "Report",
       "description": "Fraud and abuse reports. Submittable by authenticated users; readable/updatable only by admins."
+    },
+    "/supportTickets/{ticketId}": {
+      "schema": "SupportTicket",
+      "description": "Support tickets submitted by authenticated users, readable and created by owner."
     }
   }
 }
