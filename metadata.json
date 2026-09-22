@@ -1,0 +1,6 @@
+{
+  "name": "Thikana",
+  "description": "Privacy-first real estate rental platform with Firestore database architecture.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

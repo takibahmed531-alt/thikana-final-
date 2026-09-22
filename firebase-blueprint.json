@@ -1,0 +1,141 @@
+{
+  "entities": {
+    "PublicProfile": {
+      "title": "PublicProfile",
+      "description": "Public profile accessible to all users on the Thikana platform.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Firebase Auth UID of the user."
+        },
+        "displayName": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Public display name of the user."
+        },
+        "photoURL": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "URL to user's public profile picture."
+        },
+        "role": {
+          "type": "string",
+          "enum": ["tenant", "landlord", "agent"],
+          "description": "Role of the user in Thikana."
+        },
+        "isVerified": {
+          "type": "boolean",
+          "description": "Verification badge status for trust and safety."
+        }
+      },
+      "required": ["uid", "displayName", "role", "isVerified"]
+    },
+    "PrivateUser": {
+      "title": "PrivateUser",
+      "description": "Confidential PII and identity verification records isolated from public access.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Firebase Auth UID matching the document ID."
+        },
+        "phoneNumber": {
+          "type": "string",
+          "maxLength": 20,
+          "description": "Verified personal contact phone number."
+        },
+        "nidNumber": {
+          "type": "string",
+          "maxLength": 30,
+          "description": "Government National ID (NID) or smart card number."
+        },
+        "dateOfBirth": {
+          "type": "string",
+          "maxLength": 20,
+          "description": "Date of birth (YYYY-MM-DD)."
+        },
+        "hiddenAddress": {
+          "type": "string",
+          "maxLength": 300,
+          "description": "Full confidential physical or permanent address."
+        }
+      },
+      "required": ["uid", "phoneNumber", "nidNumber", "dateOfBirth", "hiddenAddress"]
+    },
+    "Property": {
+      "title": "Property",
+      "description": "Rental property listing posted by a landlord or property manager.",
+      "type": "object",
+      "properties": {
+        "propertyId": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Unique identifier for the property listing."
+        },
+        "landlordUid": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "UID of the landlord owner."
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "Catchy listing title."
+        },
+        "rentAmount": {
+          "type": "number",
+          "description": "Monthly rental price in local currency."
+        },
+        "category": {
+          "type": "string",
+          "enum": ["apartment", "house", "bachelor_sublet", "family_unit", "commercial", "hostel"],
+          "description": "Rental accommodation category."
+        },
+        "location": {
+          "type": "string",
+          "maxLength": 300,
+          "description": "Location description (e.g., area, street, city)."
+        },
+        "amenities": {
+          "type": "array",
+          "description": "List of amenities (e.g., parking, elevator, generator, gas)."
+        },
+        "images": {
+          "type": "array",
+          "description": "Array of listing image URLs."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of when the listing was published."
+        }
+      },
+      "required": [
+        "propertyId",
+        "landlordUid",
+        "title",
+        "rentAmount",
+        "category",
+        "location",
+        "amenities",
+        "images",
+        "createdAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/publicProfiles/{uid}": {
+      "schema": "PublicProfile",
+      "description": "Public user profiles readable by everyone, writable only by the account owner."
+    },
+    "/privateUsers/{uid}": {
+      "schema": "PrivateUser",
+      "description": "Private user identity records strictly readable and writable only by the authenticated owner."
+    },
+    "/properties/{propertyId}": {
+      "schema": "Property",
+      "description": "Public property listings readable by everyone, writable only by the listing landlord."
+    }
+  }
+}

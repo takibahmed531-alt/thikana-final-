@@ -1,0 +1,134 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global default-deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ----------------------------------------------------
+    // Reusable Security Helpers
+    // ----------------------------------------------------
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // ----------------------------------------------------
+    // Entity Schema Validators
+    // ----------------------------------------------------
+    function isValidPublicProfile(data, uid) {
+      return data.keys().hasAll(['uid', 'displayName', 'role', 'isVerified'])
+        && data.keys().hasOnly(['uid', 'displayName', 'photoURL', 'role', 'isVerified'])
+        && data.uid == uid
+        && data.displayName is string
+        && data.displayName.size() >= 1 && data.displayName.size() <= 100
+        && (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 1000))
+        && data.role is string
+        && (data.role in ['tenant', 'landlord', 'agent'])
+        && data.isVerified is bool;
+    }
+
+    function isValidPrivateUser(data, uid) {
+      return data.keys().hasAll(['uid', 'phoneNumber', 'nidNumber', 'dateOfBirth', 'hiddenAddress'])
+        && data.keys().hasOnly(['uid', 'phoneNumber', 'nidNumber', 'dateOfBirth', 'hiddenAddress'])
+        && data.uid == uid
+        && data.phoneNumber is string && data.phoneNumber.size() <= 30
+        && data.nidNumber is string && data.nidNumber.size() <= 30
+        && data.dateOfBirth is string && data.dateOfBirth.size() <= 30
+        && data.hiddenAddress is string && data.hiddenAddress.size() <= 300;
+    }
+
+    function isValidProperty(data) {
+      return data.keys().hasAll(['propertyId', 'landlordUid', 'title', 'rentAmount', 'category', 'location', 'amenities', 'createdAt'])
+        && (('images' in data) || ('imageUrls' in data))
+        && data.keys().hasOnly(['propertyId', 'landlordUid', 'title', 'rentAmount', 'category', 'location', 'amenities', 'images', 'imageUrls', 'createdAt'])
+        && isValidId(data.propertyId)
+        && isValidId(data.landlordUid)
+        && data.title is string && data.title.size() >= 3 && data.title.size() <= 200
+        && data.rentAmount is number && data.rentAmount >= 0
+        && data.category is string && (data.category in ['apartment', 'house', 'bachelor_sublet', 'family_unit', 'commercial', 'hostel'])
+        && data.location is string && data.location.size() >= 2 && data.location.size() <= 300
+        && data.amenities is list && data.amenities.size() <= 50
+        && (!('images' in data) || (data.images is list && data.images.size() <= 30))
+        && (!('imageUrls' in data) || (data.imageUrls is list && data.imageUrls.size() <= 30))
+        && data.createdAt is timestamp;
+    }
+
+    // ----------------------------------------------------
+    // Collection Rules
+    // ----------------------------------------------------
+
+    // 1. 'publicProfiles'
+    // Readable by anyone, writable ONLY by the document owner
+    match /publicProfiles/{uid} {
+      allow read: if true;
+
+      allow create: if isOwner(uid)
+        && isValidPublicProfile(incoming(), uid)
+        // Prevent self-assigning verified status on creation
+        && incoming().isVerified == false;
+
+      allow update: if isOwner(uid)
+        && isValidPublicProfile(incoming(), uid)
+        && incoming().uid == existing().uid
+        // Prevent user from elevating their own verification status
+        && incoming().isVerified == existing().isVerified;
+
+      allow delete: if isOwner(uid);
+    }
+
+    // 2. 'privateUsers'
+    // Strictly readable and writable ONLY by the authenticated user whose uid matches document ID
+    match /privateUsers/{uid} {
+      allow read: if isOwner(uid);
+
+      allow create: if isOwner(uid)
+        && isValidPrivateUser(incoming(), uid);
+
+      allow update: if isOwner(uid)
+        && isValidPrivateUser(incoming(), uid)
+        && incoming().uid == existing().uid;
+
+      allow delete: if isOwner(uid);
+    }
+
+    // 3. 'properties'
+    // Readable by anyone, writable ONLY by the landlord who owns the listing
+    match /properties/{propertyId} {
+      allow read: if true;
+
+      allow create: if isSignedIn()
+        && incoming().landlordUid == request.auth.uid
+        && incoming().propertyId == propertyId
+        && isValidProperty(incoming())
+        && incoming().createdAt == request.time;
+
+      allow update: if isSignedIn()
+        && existing().landlordUid == request.auth.uid
+        && incoming().landlordUid == existing().landlordUid
+        && incoming().propertyId == existing().propertyId
+        && incoming().createdAt == existing().createdAt
+        && isValidProperty(incoming());
+
+      allow delete: if isSignedIn()
+        && existing().landlordUid == request.auth.uid;
+    }
+  }
+}
