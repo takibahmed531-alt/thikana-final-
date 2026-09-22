@@ -19,6 +19,8 @@ import {
   Star,
   Trash2,
 } from 'lucide-react';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import ReportModal from '../components/ReportModal';
 import {
@@ -220,6 +222,7 @@ export default function ChatInterface() {
 
   const [liveConversations, setLiveConversations] = useState<LiveConversation[]>([]);
   const [dummyConversations, setDummyConversations] = useState<Conversation[]>(DUMMY_CONVERSATIONS);
+  const [partnerProfiles, setPartnerProfiles] = useState<Record<string, { name: string; avatar: string }>>({});
   const [draftConversation, setDraftConversation] = useState<Conversation | null>(null);
   const [draftPropertyRaw, setDraftPropertyRaw] = useState<any>(null);
   const [liveMessages, setLiveMessages] = useState<Message[]>([]);
@@ -245,6 +248,7 @@ export default function ChatInterface() {
       setLiveConversations([]);
       setDummyConversations([]);
       setDraftConversation(null);
+      setPartnerProfiles({});
       setIsConversationsLoaded(false);
       hasInitializedActiveChat.current = false;
     } else {
@@ -276,6 +280,45 @@ export default function ChatInterface() {
       unsubscribe();
     };
   }, [user?.uid]);
+
+  // Fetch public profiles for chat partners to display real display names and avatars
+  useEffect(() => {
+    if (!user?.uid || liveConversations.length === 0) return;
+
+    const fetchPartnerProfiles = async () => {
+      const updates: Record<string, { name: string; avatar: string }> = {};
+
+      for (const liveConv of liveConversations) {
+        const partnerUid =
+          liveConv.landlordUid === user.uid
+            ? liveConv.tenantUid
+            : liveConv.landlordUid;
+
+        if (partnerUid && !partnerProfiles[partnerUid] && !updates[partnerUid]) {
+          try {
+            const profileSnap = await getDoc(doc(db, 'publicProfiles', partnerUid));
+            if (profileSnap.exists()) {
+              const data = profileSnap.data();
+              if (data?.displayName || data?.photoURL) {
+                updates[partnerUid] = {
+                  name: data.displayName || '',
+                  avatar: data.photoURL || '',
+                };
+              }
+            }
+          } catch (err) {
+            console.warn(`Could not fetch public profile for ${partnerUid}:`, err);
+          }
+        }
+      }
+
+      if (Object.keys(updates).length > 0) {
+        setPartnerProfiles((prev) => ({ ...prev, ...updates }));
+      }
+    };
+
+    fetchPartnerProfiles();
+  }, [liveConversations, user?.uid]);
 
   // Handle direct navigation with newPropertyId and landlordUid
   useEffect(() => {
@@ -362,7 +405,13 @@ export default function ChatInterface() {
     return liveConversations.map((liveConv) => {
       const isUserLandlord = user?.uid === liveConv.landlordUid;
       const role = isUserLandlord ? 'Tenant' : 'Landlord';
-      const partnerName = isUserLandlord ? 'Prospective Tenant' : 'Landlord';
+      const partnerUid =
+        liveConv.landlordUid === user?.uid
+          ? liveConv.tenantUid
+          : liveConv.landlordUid;
+      const partnerName =
+        (partnerUid && partnerProfiles[partnerUid]?.name) ||
+        (isUserLandlord ? 'Tenant' : 'Landlord');
 
       let timeStr = 'Just now';
       if (liveConv.updatedAt?.toDate) {
@@ -378,6 +427,7 @@ export default function ChatInterface() {
         user: {
           name: partnerName,
           avatar:
+            (partnerUid && partnerProfiles[partnerUid]?.avatar) ||
             liveConv.propertyDetails?.imageUrl ||
             'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
           isVerified: true,
@@ -397,7 +447,7 @@ export default function ChatInterface() {
         starredBy: liveConv.starredBy || [],
       };
     });
-  }, [liveConversations, user?.uid]);
+  }, [liveConversations, user?.uid, partnerProfiles]);
 
   // Combine live conversations first, followed by dummyConversations: filter deletedBy and sort starredBy to top
   const allConversations: Conversation[] = useMemo(() => {
