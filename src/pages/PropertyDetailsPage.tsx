@@ -26,20 +26,29 @@ import {
   X,
   Send,
   ExternalLink,
+  Users,
+  User,
+  Flag,
+  Copy,
+  Check,
 } from 'lucide-react';
 import MapComponent from '../components/MapComponent';
 import NeighborhoodGuide from '../components/NeighborhoodGuide';
+import ReportModal from '../components/ReportModal';
 
 // Detailed property dictionary with realistic Dhaka / Chattogram coordinates
 const PROPERTY_DETAILS_DATA: Record<string, any> = {
   'prop-1': {
     id: 'prop-1',
+    adId: 'TK-123456',
     title: 'Modern 3-BHK Family Flat with Rooftop Garden',
     rentAmount: 36000,
     depositAmount: 72000,
     location: 'Road 9A, Dhanmondi, Dhaka',
     coordinates: [23.7465, 90.376] as [number, number],
     category: 'Family Flat',
+    status: 'available',
+    genderPreference: 'Any',
     isVerified: true,
     availableFrom: '1st of Next Month',
     floor: '5th Floor (South Facing)',
@@ -79,12 +88,16 @@ const PROPERTY_DETAILS_DATA: Record<string, any> = {
   },
   'prop-2': {
     id: 'prop-2',
+    adId: 'THK-BAN02',
     title: 'Furnished Bachelor Studio with High-Speed WiFi',
     rentAmount: 16500,
     depositAmount: 16500,
     location: 'Block C, Banani, Dhaka',
     coordinates: [23.7937, 90.4043] as [number, number],
     category: 'Bachelor',
+    status: 'available',
+    genderPreference: 'Male',
+    availableSeats: 1,
     isVerified: true,
     availableFrom: 'Immediate',
     floor: '3rd Floor',
@@ -124,6 +137,7 @@ export default function PropertyDetailsPage() {
   const [isSaved, setIsSaved] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [chatMessage, setChatMessage] = useState('');
   const [chatHistory, setChatHistory] = useState([
     {
@@ -156,12 +170,22 @@ export default function PropertyDetailsPage() {
 
             setFirestoreProperty({
               id: p.propertyId,
+              adId: p.adId,
               title: p.title,
               rentAmount: p.rentAmount,
               depositAmount: p.rentAmount * 2,
               location: p.location,
-              coordinates: [23.7465, 90.376] as [number, number],
+              coordinates:
+                Array.isArray(p.coordinates) &&
+                p.coordinates.length === 2 &&
+                typeof p.coordinates[0] === 'number' &&
+                typeof p.coordinates[1] === 'number'
+                  ? (p.coordinates as [number, number])
+                  : [23.7465, 90.376],
               category: p.category,
+              status: p.status || 'available',
+              genderPreference: p.genderPreference,
+              availableSeats: p.availableSeats,
               isVerified: true,
               availableFrom: 'Available Now',
               floor: 'Upper Floor',
@@ -199,6 +223,27 @@ export default function PropertyDetailsPage() {
 
   // Fallback to prop-1 if ID is not recognized
   const property = firestoreProperty || (id && PROPERTY_DETAILS_DATA[id]) || PROPERTY_DETAILS_DATA['prop-1'];
+
+  const [copiedAdId, setCopiedAdId] = useState(false);
+
+  // Backward compatibility: If adId is undefined for older dummy data, fall back to a slice of propertyId
+  const effectiveAdId =
+    property?.adId && property.adId.trim().length > 0
+      ? property.adId.trim()
+      : property?.id
+      ? `THK-${property.id.replace(/[^a-zA-Z0-9]/g, '').slice(0, 6).toUpperCase()}`
+      : null;
+
+  const handleCopyAdId = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!effectiveAdId) return;
+    navigator.clipboard.writeText(effectiveAdId);
+    setCopiedAdId(true);
+    setTimeout(() => {
+      setCopiedAdId(false);
+    }, 2000);
+  };
 
   const formattedRent = new Intl.NumberFormat('en-BD', {
     maximumFractionDigits: 0,
@@ -263,6 +308,16 @@ export default function PropertyDetailsPage() {
             <Share2 className="w-4 h-4" />
             <span className="hidden sm:inline">Share</span>
           </button>
+
+          <button
+            type="button"
+            onClick={() => setIsReportModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-rose-50/60 text-slate-500 hover:text-rose-600 hover:border-rose-200 text-sm font-medium transition-colors shadow-sm cursor-pointer"
+            title="Report this listing for fraud or violations"
+          >
+            <Flag className="w-4 h-4" />
+            <span className="hidden sm:inline">Report Ad</span>
+          </button>
         </div>
       </div>
 
@@ -300,12 +355,20 @@ export default function PropertyDetailsPage() {
             <img
               src={property.images[selectedImageIndex] || property.images[0]}
               alt={property.title}
-              className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500 ease-out"
+              className={`w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500 ease-out ${
+                property.status === 'rented' ? 'grayscale opacity-80' : ''
+              }`}
             />
-            <div className="absolute top-4 left-4 flex items-center gap-2">
+            <div className="absolute top-4 left-4 flex items-center gap-2 flex-wrap">
               <span className="px-3 py-1 rounded-xl bg-slate-900/80 backdrop-blur-md text-white text-xs font-semibold">
                 {property.category}
               </span>
+              {property.status === 'rented' && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-rose-600/95 backdrop-blur-md text-white text-xs font-bold shadow-sm">
+                  <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                  Rented Out
+                </span>
+              )}
               {property.isVerified && (
                 <span className="inline-flex items-center gap-1 px-3 py-1 rounded-xl bg-emerald-600/90 backdrop-blur-md text-white text-xs font-medium">
                   <BadgeCheck className="w-3.5 h-3.5 text-white" />
@@ -362,6 +425,68 @@ export default function PropertyDetailsPage() {
               <span className="px-3 py-1 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-semibold border border-emerald-200">
                 {property.category}
               </span>
+
+              {/* Rent Status Badge */}
+              <span
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border ${
+                  property.status === 'rented'
+                    ? 'bg-rose-50 text-rose-700 border-rose-200'
+                    : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                }`}
+              >
+                <span
+                  className={`w-2 h-2 rounded-full ${
+                    property.status === 'rented' ? 'bg-rose-500' : 'bg-emerald-500'
+                  }`}
+                />
+                {property.status === 'rented' ? 'Rented Out' : 'Available for Rent'}
+              </span>
+
+              {/* Gender Preference Badge */}
+              {property.genderPreference && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-50 text-slate-700 text-xs font-medium border border-slate-200">
+                  <Users className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span>
+                    Gender: <strong className="font-semibold text-slate-900">{property.genderPreference}</strong>
+                  </span>
+                </span>
+              )}
+
+              {/* Available Seats Badge (if defined) */}
+              {property.availableSeats !== undefined && property.availableSeats !== null && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 text-xs font-medium border border-emerald-200">
+                  <User className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span>
+                    <strong className="font-semibold">{property.availableSeats}</strong>{' '}
+                    {property.availableSeats === 1 ? 'Seat' : 'Seats'} Available
+                  </span>
+                </span>
+              )}
+
+              {/* Prominently styled Ad ID Badge with Copy action */}
+              {effectiveAdId && (
+                <div className="inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-lg bg-slate-900 text-white text-xs font-medium shadow-xs border border-slate-800">
+                  <span className="text-[10px] uppercase font-bold text-slate-400">Ad ID:</span>
+                  <span className="font-mono font-bold text-amber-300 tracking-wide">{effectiveAdId}</span>
+                  <button
+                    type="button"
+                    onClick={handleCopyAdId}
+                    className="p-1 rounded hover:bg-slate-800 text-slate-300 hover:text-white transition-colors cursor-pointer inline-flex items-center gap-1 active:scale-95"
+                    title={copiedAdId ? 'Copied to clipboard!' : 'Copy Ad ID'}
+                    aria-label="Copy Ad ID"
+                  >
+                    {copiedAdId ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-emerald-400" />
+                        <span className="text-[10px] font-sans font-bold text-emerald-400">Copied</span>
+                      </>
+                    ) : (
+                      <Copy className="w-3.5 h-3.5 text-slate-300 hover:text-white" />
+                    )}
+                  </button>
+                </div>
+              )}
+
               <span className="text-xs text-slate-500 font-medium flex items-center gap-1">
                 <Calendar className="w-3.5 h-3.5" />
                 Available: {property.availableFrom}
@@ -369,9 +494,37 @@ export default function PropertyDetailsPage() {
               <span className="text-xs text-slate-400">• Posted {property.postedTime}</span>
             </div>
 
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight leading-snug">
-              {property.title}
-            </h1>
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 pt-1">
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight leading-snug flex-1">
+                {property.title}
+              </h1>
+
+              {/* Prominent Ad ID Reference Box with Copy near Title */}
+              {effectiveAdId && (
+                <div className="shrink-0 inline-flex items-center gap-2 self-start px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200/90 shadow-xs">
+                  <div className="flex flex-col text-left sm:text-right">
+                    <span className="text-[10px] uppercase font-bold tracking-wider text-slate-500">Listing ID</span>
+                    <span className="font-mono font-bold text-xs sm:text-sm text-slate-900 tracking-wide">{effectiveAdId}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleCopyAdId}
+                    className="p-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 text-slate-600 hover:text-slate-900 transition-all cursor-pointer shadow-xs active:scale-95 flex items-center gap-1"
+                    title={copiedAdId ? 'Copied to clipboard!' : 'Copy Listing ID'}
+                    aria-label="Copy Listing ID"
+                  >
+                    {copiedAdId ? (
+                      <>
+                        <Check className="w-4 h-4 text-emerald-600" />
+                        <span className="text-xs font-semibold text-emerald-600">Copied</span>
+                      </>
+                    ) : (
+                      <Copy className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
+              )}
+            </div>
 
             <div className="flex items-center gap-2 text-slate-600 text-sm">
               <MapPin className="w-4 h-4 text-emerald-600 shrink-0" />
@@ -477,9 +630,16 @@ export default function PropertyDetailsPage() {
             </div>
 
             <MapComponent
-              position={property.coordinates}
-              locationName={property.location}
-              propertyTitle={property.title}
+              position={
+                Array.isArray(property.coordinates) &&
+                property.coordinates.length === 2 &&
+                typeof property.coordinates[0] === 'number' &&
+                typeof property.coordinates[1] === 'number'
+                  ? property.coordinates
+                  : [23.7465, 90.376]
+              }
+              locationName={property.location || 'Dhaka, Bangladesh'}
+              propertyTitle={property.title || 'Rental Property'}
             />
 
             {/* Smart AI Neighborhood Guide */}
@@ -592,10 +752,27 @@ export default function PropertyDetailsPage() {
                 <span>Open Full Messenger</span>
                 <ExternalLink className="w-3.5 h-3.5 text-slate-500" />
               </Link>
+
+              <button
+                type="button"
+                onClick={() => setIsReportModalOpen(true)}
+                className="w-full flex items-center justify-center gap-1.5 py-1.5 text-xs text-slate-500 hover:text-rose-600 transition-colors cursor-pointer"
+              >
+                <Flag className="w-3.5 h-3.5" />
+                <span>Report Ad</span>
+              </button>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Reusable Report & Fraud Detection Modal */}
+      <ReportModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        targetId={property.id || id || 'prop-1'}
+        targetType="property"
+      />
 
       {/* ---------------------------------------------------- */}
       {/* Privacy-First In-App Chat Modal                      */}

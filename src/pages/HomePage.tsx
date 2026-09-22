@@ -1,13 +1,28 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Search, X, Sparkles, Building, SlidersHorizontal, MapPin } from 'lucide-react';
+import {
+  Search,
+  X,
+  Sparkles,
+  Building,
+  SlidersHorizontal,
+  MapPin,
+  Loader2,
+  Bell,
+  CheckCircle2,
+  AlertCircle,
+} from 'lucide-react';
+import { QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
 import PropertyCard, { PropertyItem } from '../components/PropertyCard';
 import { getProperties } from '../services/propertyService';
+import { createSearchAlert } from '../services/alertService';
+import { useAuth } from '../context/AuthContext';
 import { PropertyListing } from '../types';
 
 // Dummy dataset of 8 realistic rental listings in Bangladesh
 const INITIAL_PROPERTIES: PropertyItem[] = [
   {
     id: 'prop-1',
+    adId: 'TK-123456',
     title: 'Modern 3-BHK Family Flat with Rooftop Garden',
     rentAmount: 36000,
     location: 'Road 9A, Dhanmondi, Dhaka',
@@ -18,9 +33,12 @@ const INITIAL_PROPERTIES: PropertyItem[] = [
     bathrooms: 3,
     areaSqft: 1650,
     postedTime: '2 hrs ago',
+    genderPreference: 'Any',
+    status: 'available',
   },
   {
     id: 'prop-2',
+    adId: 'TK-204512',
     title: 'Furnished Bachelor Studio with High-Speed WiFi',
     rentAmount: 16500,
     location: 'Block C, Banani, Dhaka',
@@ -31,9 +49,12 @@ const INITIAL_PROPERTIES: PropertyItem[] = [
     bathrooms: 1,
     areaSqft: 520,
     postedTime: '5 hrs ago',
+    genderPreference: 'Male',
+    status: 'available',
   },
   {
     id: 'prop-3',
+    adId: 'TK-308921',
     title: 'Executive Master Bedroom Sublet for Female Executive',
     rentAmount: 12000,
     location: 'Sector 7, Uttara, Dhaka',
@@ -44,9 +65,12 @@ const INITIAL_PROPERTIES: PropertyItem[] = [
     bathrooms: 1,
     areaSqft: 340,
     postedTime: '1 day ago',
+    genderPreference: 'Female',
+    status: 'available',
   },
   {
     id: 'prop-4',
+    adId: 'TK-410293',
     title: 'Spacious 4-BHK Luxury South-Facing Flat',
     rentAmount: 52000,
     location: 'Mirpur DOHS, Dhaka',
@@ -57,9 +81,11 @@ const INITIAL_PROPERTIES: PropertyItem[] = [
     bathrooms: 4,
     areaSqft: 2200,
     postedTime: '1 day ago',
+    status: 'available',
   },
   {
     id: 'prop-5',
+    adId: 'TK-512944',
     title: 'Single Seat in University Student Mess with Meal Facility',
     rentAmount: 5500,
     location: 'Block D, Bashundhara R/A, Dhaka',
@@ -70,9 +96,13 @@ const INITIAL_PROPERTIES: PropertyItem[] = [
     bathrooms: 1,
     areaSqft: 180,
     postedTime: '2 days ago',
+    genderPreference: 'Male',
+    availableSeats: 2,
+    status: 'available',
   },
   {
     id: 'prop-6',
+    adId: 'TK-619842',
     title: 'Cozy 2-BHK Apartment near GEC Circle',
     rentAmount: 24000,
     location: 'Nasirabad, GEC Circle, Chattogram',
@@ -83,9 +113,11 @@ const INITIAL_PROPERTIES: PropertyItem[] = [
     bathrooms: 2,
     areaSqft: 1100,
     postedTime: '3 days ago',
+    status: 'rented',
   },
   {
     id: 'prop-7',
+    adId: 'TK-724185',
     title: 'Quiet Bachelor Suite near Zindabazar Hub',
     rentAmount: 11500,
     location: 'Kumarpara, Zindabazar, Sylhet',
@@ -96,9 +128,12 @@ const INITIAL_PROPERTIES: PropertyItem[] = [
     bathrooms: 1,
     areaSqft: 400,
     postedTime: '4 days ago',
+    genderPreference: 'Male',
+    status: 'available',
   },
   {
     id: 'prop-8',
+    adId: 'TK-831950',
     title: 'Single Room Sublet with Attached Balcony',
     rentAmount: 9500,
     location: 'Japan Garden City, Mohammadpur, Dhaka',
@@ -109,70 +144,181 @@ const INITIAL_PROPERTIES: PropertyItem[] = [
     bathrooms: 1,
     areaSqft: 280,
     postedTime: '5 days ago',
+    genderPreference: 'Female',
+    status: 'rented',
   },
 ];
 
 const CATEGORIES = ['All', 'Family Flat', 'Bachelor', 'Sublet', 'Mess'];
 
+function mapListingToPropertyItem(p: PropertyListing): PropertyItem {
+  let cat = 'Family Flat';
+  const rawCat = (p.category as string || '').toLowerCase();
+  if (rawCat === 'bachelor_sublet' || rawCat === 'bachelor') cat = 'Bachelor';
+  else if (rawCat === 'hostel' || rawCat === 'mess') cat = 'Mess';
+  else if (rawCat === 'commercial') cat = 'Commercial';
+  else if (rawCat === 'sublet') cat = 'Sublet';
+  else if (rawCat === 'apartment' || rawCat === 'family_unit' || rawCat === 'house' || rawCat === 'family flat') cat = 'Family Flat';
+
+  const firstImg =
+    (p.images && p.images.length > 0 && p.images[0]) ||
+    (p.imageUrls && p.imageUrls.length > 0 && p.imageUrls[0]) ||
+    'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80';
+
+  return {
+    id: p.propertyId,
+    adId: p.adId,
+    title: p.title,
+    rentAmount: p.rentAmount,
+    location: p.location,
+    category: cat,
+    isVerified: true,
+    imageUrl: firstImg,
+    bedrooms: 3,
+    bathrooms: 2,
+    areaSqft: 1400,
+    postedTime: 'Just now',
+    genderPreference: p.genderPreference,
+    availableSeats: p.availableSeats,
+    status: p.status || 'available',
+    coordinates: p.coordinates,
+  };
+}
+
 export default function HomePage() {
   const [searchArea, setSearchArea] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [liveProperties, setLiveProperties] = useState<PropertyItem[]>([]);
+  const [lastVisibleDoc, setLastVisibleDoc] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
+  const [hasMore, setHasMore] = useState<boolean>(false);
+  const [loadingMore, setLoadingMore] = useState<boolean>(false);
+
+  // Authentication & Smart Search Alert state
+  const { user, signInWithGoogle } = useAuth();
+  const [alertSubmitting, setAlertSubmitting] = useState(false);
+  const [alertMessage, setAlertMessage] = useState<{
+    type: 'success' | 'error' | 'auth';
+    text: string;
+  } | null>(null);
+
+  const handleCreateAlert = async () => {
+    if (!user) {
+      setAlertMessage({
+        type: 'auth',
+        text: 'Please sign in to save this smart alert and get notified when homes match your search.',
+      });
+      return;
+    }
+
+    setAlertSubmitting(true);
+    setAlertMessage(null);
+
+    try {
+      const area = searchArea.trim() || 'All areas';
+      const category = selectedCategory || 'All';
+      await createSearchAlert(user.uid, area, category);
+      setAlertMessage({
+        type: 'success',
+        text: `Alert saved! We will notify you when properties in "${area}" (${category}) become available.`,
+      });
+      // Auto-clear success message after 5 seconds
+      setTimeout(() => {
+        setAlertMessage((prev) => (prev?.type === 'success' ? null : prev));
+      }, 5000);
+    } catch (err: any) {
+      setAlertMessage({
+        type: 'error',
+        text: err?.message || 'Failed to set search alert. Please try again.',
+      });
+    } finally {
+      setAlertSubmitting(false);
+    }
+  };
 
   useEffect(() => {
-    async function loadFirestoreProperties() {
+    async function loadInitialProperties() {
       try {
-        const res = await getProperties({ pageSize: 20 });
-        if (res.success && res.properties.length > 0) {
-          const mapped: PropertyItem[] = res.properties.map((p: PropertyListing) => {
-            let cat = 'Family Flat';
-            if (p.category === 'bachelor_sublet') cat = 'Bachelor';
-            else if (p.category === 'hostel') cat = 'Mess';
-            else if (p.category === 'commercial') cat = 'Commercial';
-
-            const firstImg =
-              (p.images && p.images.length > 0 && p.images[0]) ||
-              (p.imageUrls && p.imageUrls.length > 0 && p.imageUrls[0]) ||
-              'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80';
-
-            return {
-              id: p.propertyId,
-              title: p.title,
-              rentAmount: p.rentAmount,
-              location: p.location,
-              category: cat,
-              isVerified: true,
-              imageUrl: firstImg,
-              bedrooms: 3,
-              bathrooms: 2,
-              areaSqft: 1400,
-              postedTime: 'Just now',
-            };
-          });
+        const res = await getProperties({ pageSize: 6 });
+        if (res.success && res.properties) {
+          const mapped = res.properties.map(mapListingToPropertyItem);
           setLiveProperties(mapped);
+          setLastVisibleDoc(res.lastDoc);
+          setHasMore(res.hasMore);
         }
       } catch (err) {
         console.warn('Could not load dynamic listings from Firestore:', err);
       }
     }
 
-    loadFirestoreProperties();
+    loadInitialProperties();
   }, []);
+
+  const handleLoadMore = async () => {
+    if (!lastVisibleDoc || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const res = await getProperties({ pageSize: 6 }, lastVisibleDoc);
+      if (res.success && res.properties) {
+        const mapped = res.properties.map(mapListingToPropertyItem);
+        setLiveProperties((prev) => {
+          const existingIds = new Set(prev.map((item) => item.id));
+          const uniqueNew = mapped.filter((item) => !existingIds.has(item.id));
+          return [...prev, ...uniqueNew];
+        });
+        setLastVisibleDoc(res.lastDoc);
+        setHasMore(res.hasMore);
+      } else {
+        setHasMore(false);
+      }
+    } catch (err) {
+      console.warn('Error loading more properties:', err);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   // Filter properties dynamically by search area and active category
   const filteredProperties = useMemo(() => {
     const allProps = [...liveProperties, ...INITIAL_PROPERTIES];
+    const query = searchArea.trim();
+    const lowerQuery = query.toLowerCase();
+
+    // Check if searchArea starts with 'TK-' or matches an adId pattern (e.g. TK-, THK-, ID: TK-, or XX-XXXX)
+    const isAdIdSearch =
+      lowerQuery.startsWith('tk-') ||
+      lowerQuery.startsWith('thk-') ||
+      lowerQuery.startsWith('id:') ||
+      /^(tk|thk)[-_]?[a-z0-9]+/i.test(lowerQuery) ||
+      /^[a-z]{2,4}-\d{3,}/i.test(lowerQuery);
+
     return allProps.filter((prop) => {
       // Category match
       const categoryMatch =
         selectedCategory === 'All' ||
         prop.category.toLowerCase() === selectedCategory.toLowerCase();
 
-      // Area / Location search match
-      const searchMatch =
-        !searchArea.trim() ||
-        prop.location.toLowerCase().includes(searchArea.trim().toLowerCase()) ||
-        prop.title.toLowerCase().includes(searchArea.trim().toLowerCase());
+      // Search match
+      let searchMatch = true;
+      if (query) {
+        if (isAdIdSearch) {
+          const cleanedSearch = lowerQuery.replace(/^id:\s*/i, '').trim();
+          const adIdLower = (prop.adId || '').toLowerCase();
+
+          // Backward compatibility fallback for older items without adId
+          const fallbackAdId = prop.id
+            ? `tk-${prop.id.replace(/[^a-z0-9]/g, '').slice(0, 6)}`.toLowerCase()
+            : '';
+
+          searchMatch =
+            (adIdLower.length > 0 && (adIdLower === cleanedSearch || adIdLower.includes(cleanedSearch))) ||
+            (fallbackAdId.length > 0 && (fallbackAdId === cleanedSearch || fallbackAdId.includes(cleanedSearch)));
+        } else {
+          // If the search string is not an ID, continue to filter by location and title as it currently does
+          searchMatch =
+            prop.location.toLowerCase().includes(lowerQuery) ||
+            prop.title.toLowerCase().includes(lowerQuery);
+        }
+      }
 
       return categoryMatch && searchMatch;
     });
@@ -219,7 +365,7 @@ export default function HomePage() {
                 type="text"
                 value={searchArea}
                 onChange={(e) => setSearchArea(e.target.value)}
-                placeholder="Search by area (e.g., Dhanmondi, Banani, Uttara, Mirpur)..."
+                placeholder="Search by area (e.g., Dhanmondi) or Ad ID (e.g., TK-123456)..."
                 className="w-full pl-12 pr-12 py-3.5 sm:py-4 bg-white/95 text-slate-900 placeholder-slate-400 rounded-2xl text-sm sm:text-base font-medium focus:outline-none focus:ring-4 focus:ring-emerald-500/30 transition-all border border-white/20"
               />
 
@@ -305,33 +451,113 @@ export default function HomePage() {
       {/* ---------------------------------------------------- */}
       <section className="space-y-6">
         {filteredProperties.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 sm:gap-6">
-            {filteredProperties.map((prop) => (
-              <PropertyCard key={prop.id} property={prop} />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 sm:gap-6">
+              {filteredProperties.map((prop) => (
+                <PropertyCard key={prop.id} property={prop} />
+              ))}
+            </div>
+
+            {/* Load More Properties Button */}
+            {hasMore && (
+              <div className="flex justify-center pt-4 pb-2">
+                <button
+                  type="button"
+                  onClick={handleLoadMore}
+                  disabled={loadingMore}
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl bg-white hover:bg-slate-50 text-slate-800 font-semibold text-sm border border-slate-200 shadow-sm hover:shadow transition-all disabled:opacity-75 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  {loadingMore ? (
+                    <>
+                      <Loader2 className="w-4 h-4 text-emerald-600 animate-spin" />
+                      <span>Loading more properties...</span>
+                    </>
+                  ) : (
+                    <span>Load More Properties</span>
+                  )}
+                </button>
+              </div>
+            )}
+          </>
         ) : (
           /* Empty Search Fallback State */
-          <div className="bg-white rounded-3xl border border-slate-200 p-8 sm:p-12 text-center max-w-md mx-auto space-y-4 shadow-sm">
-            <div className="w-14 h-14 bg-slate-100 text-slate-400 rounded-2xl flex items-center justify-center mx-auto">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-8 sm:p-12 text-center max-w-md mx-auto space-y-5 shadow-sm transition-colors duration-300">
+            <div className="w-14 h-14 bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 rounded-2xl flex items-center justify-center mx-auto">
               <Building className="w-7 h-7" />
             </div>
             <div className="space-y-1">
-              <h3 className="text-base font-bold text-slate-800">No properties found</h3>
-              <p className="text-xs text-slate-500">
+              <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">No properties found</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 No listings matched "{searchArea || selectedCategory}". Try searching another area or clear your filters.
               </p>
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                setSearchArea('');
-                setSelectedCategory('All');
-              }}
-              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition-colors"
-            >
-              Reset All Filters
-            </button>
+
+            {/* Alert Notification Feedback Message */}
+            {alertMessage && (
+              <div
+                className={`p-3.5 rounded-xl text-xs flex items-start gap-2.5 text-left transition-all ${
+                  alertMessage.type === 'success'
+                    ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                    : alertMessage.type === 'auth'
+                    ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
+                    : 'bg-rose-50 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-800'
+                }`}
+              >
+                {alertMessage.type === 'success' ? (
+                  <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
+                ) : alertMessage.type === 'auth' ? (
+                  <Bell className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+                ) : (
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-600 dark:text-rose-400 mt-0.5" />
+                )}
+                <div className="flex-1 space-y-1">
+                  <p className="leading-relaxed">{alertMessage.text}</p>
+                  {alertMessage.type === 'auth' && (
+                    <button
+                      type="button"
+                      onClick={() => signInWithGoogle()}
+                      className="inline-block font-semibold text-emerald-700 dark:text-emerald-400 underline hover:opacity-80 transition-opacity cursor-pointer"
+                    >
+                      Sign In with Google
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchArea('');
+                  setSelectedCategory('All');
+                  setAlertMessage(null);
+                }}
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold transition-colors cursor-pointer"
+              >
+                Reset All Filters
+              </button>
+
+              {/* Task 3: Secondary Button 'Notify Me When Available' with Bell icon */}
+              <button
+                type="button"
+                onClick={handleCreateAlert}
+                disabled={alertSubmitting}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white text-xs font-semibold shadow-sm shadow-emerald-600/20 transition-all cursor-pointer disabled:opacity-75"
+              >
+                {alertSubmitting ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Saving Alert...</span>
+                  </>
+                ) : (
+                  <>
+                    <Bell className="w-3.5 h-3.5" />
+                    <span>Notify Me When Available</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         )}
       </section>

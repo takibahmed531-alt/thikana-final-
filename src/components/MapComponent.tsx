@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { MapPin, Navigation } from 'lucide-react';
@@ -37,6 +37,15 @@ interface MapComponentProps {
   propertyTitle?: string;
 }
 
+function MapRecenter({ position }: { position: [number, number] }) {
+  const map = useMap();
+  useEffect(() => {
+    map.setView(position, map.getZoom());
+    map.invalidateSize();
+  }, [position, map]);
+  return null;
+}
+
 export default function MapComponent({
   position = [23.7465, 90.376], // Default: Dhanmondi, Dhaka
   locationName = 'Road 9A, Dhanmondi, Dhaka',
@@ -59,6 +68,7 @@ export default function MapComponent({
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
+        <MapRecenter position={position} />
         <Marker position={position} icon={customThikanaIcon}>
           <Popup className="thikana-leaflet-popup">
             <div className="p-1 space-y-1">

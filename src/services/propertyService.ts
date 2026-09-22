@@ -131,6 +131,18 @@ export async function uploadPropertyImages(files: File[] | FileList): Promise<st
 }
 
 /**
+ * Generates a unique short Ad ID for searching and offline reference (e.g. THK-87B2A)
+ */
+export function generateShortAdId(): string {
+  const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+  let random = '';
+  for (let i = 0; i < 5; i++) {
+    random += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return `THK-${random}`;
+}
+
+/**
  * Task 2: Create Property
  * Compresses and uploads provided imageFiles, then saves complete listing data
  * into the 'properties' Firestore collection with serverTimestamp().
@@ -181,9 +193,32 @@ export async function createProperty(
 
     const propertyId = propertyDocRef.id;
 
+    // Sanitize coordinates (fallback to central Dhaka if missing or malformed for backward compatibility)
+    const sanitizedCoordinates: [number, number] =
+      Array.isArray(propertyData.coordinates) &&
+      propertyData.coordinates.length === 2 &&
+      typeof propertyData.coordinates[0] === 'number' &&
+      !isNaN(propertyData.coordinates[0]) &&
+      typeof propertyData.coordinates[1] === 'number' &&
+      !isNaN(propertyData.coordinates[1])
+        ? [propertyData.coordinates[0], propertyData.coordinates[1]]
+        : [23.8103, 90.4125];
+
+    // Optional availableSeats validation
+    const parsedSeats =
+      propertyData.availableSeats !== undefined && propertyData.availableSeats !== null
+        ? Number(propertyData.availableSeats)
+        : undefined;
+
     // Step 3: Build listing payload conforming to Firestore security schema
+    const adId =
+      propertyData.adId && propertyData.adId.trim().length >= 5
+        ? propertyData.adId.trim()
+        : generateShortAdId();
+
     const completePropertyData: PropertyListing = {
       propertyId,
+      adId,
       landlordUid,
       title: propertyData.title.trim(),
       rentAmount: Number(propertyData.rentAmount),
@@ -192,6 +227,12 @@ export async function createProperty(
       amenities: Array.isArray(propertyData.amenities) ? propertyData.amenities : [],
       images: finalImages,
       imageUrls: finalImages, // Provided as alias for consistency
+      genderPreference: propertyData.genderPreference || 'Any',
+      ...(parsedSeats !== undefined && !isNaN(parsedSeats) && parsedSeats >= 0
+        ? { availableSeats: parsedSeats }
+        : {}),
+      status: 'available', // Default to 'available' per specification
+      coordinates: sanitizedCoordinates,
       createdAt: serverTimestamp(),
     };
 
@@ -320,3 +361,50 @@ export async function getPropertyById(propertyId: string): Promise<SinglePropert
     throw error;
   }
 }
+
+/**
+ * Task 5: Search Property by Short Ad ID
+ * Fetches a property document by its unique short Ad ID (e.g. THK-XXXXX).
+ *
+ * @param adId The unique short Ad ID
+ */
+export async function getPropertyByAdId(adId: string): Promise<SinglePropertyResponse> {
+  try {
+    if (!adId || !adId.trim()) {
+      throw new Error('Valid Ad ID is required.');
+    }
+
+    const q = query(
+      collection(db, 'properties'),
+      where('adId', '==', adId.trim().toUpperCase()),
+      limit(1)
+    );
+
+    let querySnapshot;
+    try {
+      querySnapshot = await getDocs(q);
+    } catch (err) {
+      handleFirestoreError(err, OperationType.LIST, 'properties');
+    }
+
+    if (!querySnapshot || querySnapshot.empty) {
+      return {
+        success: false,
+        property: null,
+        message: `Property with Ad ID "${adId}" not found.`,
+      };
+    }
+
+    const docSnap = querySnapshot.docs[0];
+    const property = docSnap.data() as PropertyListing;
+
+    return {
+      success: true,
+      property,
+    };
+  } catch (error: any) {
+    console.error(`Error searching property by Ad ID ${adId}:`, error);
+    throw error;
+  }
+}
+

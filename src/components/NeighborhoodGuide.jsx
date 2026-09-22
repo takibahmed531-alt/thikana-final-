@@ -30,7 +30,7 @@ export default function NeighborhoodGuide({ location = 'Dhanmondi, Dhaka' }) {
       setError(null);
 
       try {
-        // Attempt server-side Gemini API call
+        // Server-side Gemini API call
         const response = await fetch('/api/gemini/neighborhood', {
           method: 'POST',
           headers: {
@@ -51,54 +51,6 @@ export default function NeighborhoodGuide({ location = 'Dhanmondi, Dhaka' }) {
               setLoading(false);
             }
             return;
-          }
-        }
-
-        // If server returned non-ok or unexpected format, try client-side with valid gemini-3.8-flash
-        const apiKey =
-          import.meta.env.VITE_GEMINI_API_KEY ||
-          (typeof process !== 'undefined' ? process.env?.GEMINI_API_KEY : '');
-
-        if (apiKey && apiKey !== 'MY_GEMINI_API_KEY') {
-          const systemInstruction =
-            'You are a local Dhaka real estate expert. The user will provide an area name. Respond ONLY with a valid JSON object containing 3 arrays: topSchools (max 3), topHospitals (max 3), and nearestTransport (max 2 like Metro or Bus stops). Do not include markdown code blocks or any other text, just the raw JSON.';
-
-          const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`;
-
-          const directRes = await fetch(endpoint, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ role: 'user', parts: [{ text: `Area: ${location}` }] }],
-              systemInstruction: { parts: [{ text: systemInstruction }] },
-              generationConfig: {
-                responseMimeType: 'application/json',
-                temperature: 0.2,
-              },
-            }),
-          });
-
-          if (directRes.ok) {
-            const jsonRes = await directRes.json();
-            const rawText = jsonRes?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-            let cleanedText = rawText.trim();
-            if (cleanedText.startsWith('```json')) cleanedText = cleanedText.slice(7);
-            else if (cleanedText.startsWith('```')) cleanedText = cleanedText.slice(3);
-            if (cleanedText.endsWith('```')) cleanedText = cleanedText.slice(0, -3);
-            cleanedText = cleanedText.trim();
-
-            const parsed = JSON.parse(cleanedText);
-            if (
-              Array.isArray(parsed.topSchools) &&
-              Array.isArray(parsed.topHospitals) &&
-              Array.isArray(parsed.nearestTransport)
-            ) {
-              if (isMounted) {
-                setData(parsed);
-                setLoading(false);
-              }
-              return;
-            }
           }
         }
 

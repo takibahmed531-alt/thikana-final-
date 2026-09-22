@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import {
   Search,
@@ -14,7 +14,19 @@ import {
   Clock,
   ExternalLink,
   Lock,
+  Loader2,
+  Radio,
+  Flag,
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import ReportModal from '../components/ReportModal';
+import {
+  subscribeToUserConversations,
+  subscribeToMessages,
+  sendMessage as sendFirebaseMessage,
+  Conversation as LiveConversation,
+  ChatMessage,
+} from '../services/chatService';
 
 interface Message {
   id: string;
@@ -26,6 +38,8 @@ interface Message {
 
 interface Conversation {
   id: string;
+  isLive?: boolean;
+  propertyId?: string;
   user: {
     name: string;
     avatar: string;
@@ -184,36 +198,157 @@ const DUMMY_CONVERSATIONS: Conversation[] = [
 ];
 
 export default function ChatInterface() {
+  const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const urlChatId = searchParams.get('chatId');
 
-  const [conversations, setConversations] = useState<Conversation[]>(DUMMY_CONVERSATIONS);
+  const [liveConversations, setLiveConversations] = useState<LiveConversation[]>([]);
+  const [dummyConversations, setDummyConversations] = useState<Conversation[]>(DUMMY_CONVERSATIONS);
+  const [liveMessages, setLiveMessages] = useState<Message[]>([]);
+  const [isSending, setIsSending] = useState(false);
+
   const [activeChatId, setActiveChatId] = useState<string>(urlChatId || DUMMY_CONVERSATIONS[0].id);
   const [searchQuery, setSearchQuery] = useState('');
   const [inputText, setInputText] = useState('');
   const [attachedImage, setAttachedImage] = useState<string | null>(null);
+  const [isReportOpen, setIsReportOpen] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Sync activeChatId when URL search param changes
+  // Subscribe to live conversations for current authenticated user
   useEffect(() => {
-    if (urlChatId && conversations.some((c) => c.id === urlChatId)) {
-      setActiveChatId(urlChatId);
+    if (!user?.uid) {
+      setLiveConversations([]);
+      return;
     }
-  }, [urlChatId, conversations]);
+
+    const unsubscribe = subscribeToUserConversations(
+      user.uid,
+      (convs) => {
+        setLiveConversations(convs);
+      },
+      (err) => {
+        console.warn('Real-time conversation subscription warning:', err);
+      }
+    );
+
+    return () => {
+      unsubscribe();
+    };
+  }, [user?.uid]);
+
+  // Map live Firestore conversations to UI presentation format
+  const mappedLiveConversations: Conversation[] = useMemo(() => {
+    return liveConversations.map((liveConv) => {
+      const isUserLandlord = user?.uid === liveConv.landlordUid;
+      const role = isUserLandlord ? 'Tenant' : 'Landlord';
+      const partnerName = isUserLandlord ? 'Prospective Tenant' : 'Landlord';
+
+      let timeStr = 'Just now';
+      if (liveConv.updatedAt?.toDate) {
+        timeStr = liveConv.updatedAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      } else if (liveConv.updatedAt?.seconds) {
+        timeStr = new Date(liveConv.updatedAt.seconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      }
+
+      return {
+        id: liveConv.conversationId || liveConv.id || '',
+        isLive: true,
+        propertyId: liveConv.propertyId || 'prop-1',
+        user: {
+          name: partnerName,
+          avatar:
+            liveConv.propertyDetails?.imageUrl ||
+            'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
+          isVerified: true,
+          role,
+          online: true,
+        },
+        propertyTitle: liveConv.propertyDetails?.title || 'Rental Property Inquiry',
+        propertyPrice: liveConv.propertyDetails?.rentAmount
+          ? `৳${liveConv.propertyDetails.rentAmount.toLocaleString()}/mo`
+          : '৳30,000/mo',
+        propertyLocation: liveConv.propertyDetails?.location || 'Dhaka, Bangladesh',
+        lastMessage: liveConv.lastMessage || 'Conversation started',
+        lastMessageTime: timeStr,
+        unreadCount: 0,
+        messages: [],
+      };
+    });
+  }, [liveConversations, user?.uid]);
+
+  // Combine live conversations first, followed by DUMMY_CONVERSATIONS
+  const allConversations: Conversation[] = useMemo(() => {
+    return [...mappedLiveConversations, ...dummyConversations];
+  }, [mappedLiveConversations, dummyConversations]);
+
+  // Sync activeChatId when URL search param changes or active chat isn't initialized
+  useEffect(() => {
+    if (urlChatId && allConversations.some((c) => c.id === urlChatId)) {
+      setActiveChatId(urlChatId);
+    } else if (!activeChatId && allConversations.length > 0) {
+      setActiveChatId(allConversations[0].id);
+    }
+  }, [urlChatId, allConversations, activeChatId]);
 
   // Current active conversation
   const activeConversation =
-    conversations.find((c) => c.id === activeChatId) || conversations[0];
+    allConversations.find((c) => c.id === activeChatId) || allConversations[0];
+
+  // Determine whether current active conversation is from Firestore live data
+  const isLiveChat = Boolean(activeConversation?.isLive);
+
+  // Subscribe to real-time messages when active conversation is a live Firebase conversation
+  useEffect(() => {
+    if (!activeChatId || !isLiveChat) {
+      setLiveMessages([]);
+      return;
+    }
+
+    const unsubscribe = subscribeToMessages(
+      activeChatId,
+      (msgs: ChatMessage[]) => {
+        const formatted: Message[] = msgs.map((m) => {
+          let timeStr = 'Just now';
+          if (m.createdAt?.toDate) {
+            timeStr = m.createdAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          } else if (m.createdAt?.seconds) {
+            timeStr = new Date(m.createdAt.seconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          }
+
+          return {
+            id: m.messageId || m.id || `m_${Date.now()}_${Math.random()}`,
+            sender: m.senderUid === user?.uid ? 'me' : 'other',
+            text: m.text,
+            timestamp: timeStr,
+            imageUrl: m.imageUrl || undefined,
+          };
+        });
+        setLiveMessages(formatted);
+      },
+      (err) => {
+        console.warn('Real-time message subscription warning:', err);
+      }
+    );
+
+    return () => {
+      unsubscribe();
+    };
+  }, [activeChatId, isLiveChat, user?.uid]);
+
+  // The active message feed to display: live messages if live chat, else local dummy messages
+  const displayedMessages: Message[] = isLiveChat
+    ? liveMessages
+    : (activeConversation?.messages || []);
 
   // Auto-scroll message feed to bottom on new message or chat change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [activeChatId, activeConversation?.messages]);
+  }, [activeChatId, displayedMessages.length]);
 
   // Filter conversations by landlord name or property title
-  const filteredConversations = conversations.filter(
+  const filteredConversations = allConversations.filter(
     (c) =>
       c.user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       c.propertyTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -223,40 +358,58 @@ export default function ChatInterface() {
   const handleSelectConversation = (id: string) => {
     setActiveChatId(id);
     setSearchParams({ chatId: id });
-    // Mark as read
-    setConversations((prev) =>
+    // Mark dummy conversation as read if applicable
+    setDummyConversations((prev) =>
       prev.map((c) => (c.id === id ? { ...c, unreadCount: 0 } : c))
     );
   };
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputText.trim() && !attachedImage) return;
 
-    const newMsg: Message = {
-      id: `m_${Date.now()}`,
-      sender: 'me',
-      text: inputText.trim(),
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      imageUrl: attachedImage || undefined,
-    };
-
-    setConversations((prev) =>
-      prev.map((c) => {
-        if (c.id === activeChatId) {
-          return {
-            ...c,
-            lastMessage: newMsg.text || 'Sent an image attachment',
-            lastMessageTime: newMsg.timestamp,
-            messages: [...c.messages, newMsg],
-          };
-        }
-        return c;
-      })
-    );
-
+    const textToSend = inputText.trim();
+    const imageToSend = attachedImage;
     setInputText('');
     setAttachedImage(null);
+
+    if (isLiveChat) {
+      if (!user) {
+        alert('Please sign in to send messages in live conversations.');
+        return;
+      }
+      setIsSending(true);
+      try {
+        await sendFirebaseMessage(activeChatId, user.uid, textToSend, imageToSend);
+      } catch (err) {
+        console.error('Failed to send live message:', err);
+      } finally {
+        setIsSending(false);
+      }
+    } else {
+      // Dummy conversation: append to local dummy state
+      const newMsg: Message = {
+        id: `m_${Date.now()}`,
+        sender: 'me',
+        text: textToSend,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        imageUrl: imageToSend || undefined,
+      };
+
+      setDummyConversations((prev) =>
+        prev.map((c) => {
+          if (c.id === activeChatId) {
+            return {
+              ...c,
+              lastMessage: newMsg.text || 'Sent an image attachment',
+              lastMessageTime: newMsg.timestamp,
+              messages: [...c.messages, newMsg],
+            };
+          }
+          return c;
+        })
+      );
+    }
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -358,6 +511,11 @@ export default function ChatInterface() {
                             </span>
                             {conv.user.isVerified && (
                               <BadgeCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                            )}
+                            {conv.isLive && (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                Live
+                              </span>
                             )}
                           </div>
                           <span className="text-[10px] text-slate-400 font-medium shrink-0">
@@ -466,7 +624,7 @@ export default function ChatInterface() {
                   {/* Right Header Action: Property Pill */}
                   <div className="flex items-center gap-2">
                     <Link
-                      to="/property/prop-1"
+                      to={`/property/${activeConversation.propertyId || 'prop-1'}`}
                       className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-xs font-medium text-slate-700 transition-colors"
                     >
                       <Building2 className="w-3.5 h-3.5 text-emerald-600" />
@@ -476,9 +634,15 @@ export default function ChatInterface() {
                       <ExternalLink className="w-3 h-3 text-slate-400" />
                     </Link>
 
-                    <div className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer">
-                      <MoreVertical className="w-4 h-4" />
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsReportOpen(true)}
+                      className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer transition-colors"
+                      title="Report this user or conversation"
+                      aria-label="Report conversation"
+                    >
+                      <Flag className="w-4 h-4" />
+                    </button>
                   </div>
                 </header>
 
@@ -519,8 +683,19 @@ export default function ChatInterface() {
                     </p>
                   </div>
 
+                  {/* Empty state for conversations with no messages yet */}
+                  {displayedMessages.length === 0 && (
+                    <div className="text-center py-10 px-4">
+                      <p className="text-xs text-slate-400">
+                        {isLiveChat
+                          ? 'No messages yet in this inquiry. Send a message to start communicating!'
+                          : 'No messages to display.'}
+                      </p>
+                    </div>
+                  )}
+
                   {/* Messages Stream */}
-                  {activeConversation.messages.map((msg) => {
+                  {displayedMessages.map((msg) => {
                     const isMe = msg.sender === 'me';
                     return (
                       <div
@@ -646,11 +821,15 @@ export default function ChatInterface() {
                   {/* Primary Send Button */}
                   <button
                     type="submit"
-                    disabled={!inputText.trim() && !attachedImage}
+                    disabled={(!inputText.trim() && !attachedImage) || isSending}
                     className="p-2.5 sm:px-4 sm:py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white font-semibold flex items-center gap-1.5 transition-all shadow-sm shadow-blue-500/20 active:scale-95 cursor-pointer"
                     aria-label="Send message"
                   >
-                    <Send className="w-4 h-4" />
+                    {isSending ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Send className="w-4 h-4" />
+                    )}
                     <span className="hidden sm:inline text-xs">Send</span>
                   </button>
                 </form>
@@ -670,6 +849,16 @@ export default function ChatInterface() {
           </main>
         </div>
       </div>
+
+      {/* Reusable Report & Fraud Detection Modal */}
+      {activeConversation && (
+        <ReportModal
+          isOpen={isReportOpen}
+          onClose={() => setIsReportOpen(false)}
+          targetId={activeConversation.user.name || activeConversation.id}
+          targetType="user"
+        />
+      )}
     </div>
   );
 }

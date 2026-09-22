@@ -10,8 +10,13 @@ import {
   KeyRound,
   Home,
   Check,
+  Settings,
+  Moon,
+  Sun,
+  Bell,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { usePreferences } from '../context/PreferencesContext';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { handleFirestoreError, OperationType } from '../services/firestoreErrors';
@@ -20,6 +25,7 @@ import { UserRole } from '../types';
 export default function ProfilePage() {
   const { user, publicProfile, privateUser, loading, signInWithGoogle, signOut, refreshProfile } =
     useAuth();
+  const { theme, notificationsEnabled, toggleTheme, toggleNotifications } = usePreferences();
 
   const [displayName, setDisplayName] = useState('');
   const [role, setRole] = useState<UserRole>('tenant');
@@ -400,6 +406,97 @@ export default function ProfilePage() {
                 </button>
               </div>
             </form>
+          </div>
+
+          {/* Section 3: App Settings */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-5">
+            <div className="flex items-center gap-2 text-slate-900 font-bold">
+              <Settings className="w-5 h-5 text-emerald-600" />
+              <h3>App Settings</h3>
+            </div>
+            <p className="text-xs text-slate-500">
+              Manage your interface preferences and live alert settings. Changes are automatically synced with your account.
+            </p>
+
+            <div className="divide-y divide-slate-100">
+              {/* Dark Mode Toggle */}
+              <div className="flex items-center justify-between py-3.5 first:pt-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
+                    {theme === 'dark' ? (
+                      <Moon className="w-5 h-5 text-emerald-600" />
+                    ) : (
+                      <Sun className="w-5 h-5 text-amber-500" />
+                    )}
+                  </div>
+                  <div>
+                    <div className="text-sm font-semibold text-slate-900">Dark Mode</div>
+                    <div className="text-xs text-slate-500">
+                      {theme === 'dark' ? 'Dark theme is currently active' : 'Light theme is currently active'}
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={theme === 'dark'}
+                  onClick={toggleTheme}
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${
+                    theme === 'dark' ? 'bg-emerald-600' : 'bg-slate-200'
+                  }`}
+                  title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+                >
+                  <span className="sr-only">Toggle Dark Mode</span>
+                  <span
+                    aria-hidden="true"
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                      theme === 'dark' ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {/* Push Notifications Toggle */}
+              <div className="flex items-center justify-between py-3.5 last:pb-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
+                    <Bell
+                      className={`w-5 h-5 ${
+                        notificationsEnabled ? 'text-emerald-600' : 'text-slate-400'
+                      }`}
+                    />
+                  </div>
+                  <div>
+                    <div className="text-sm font-semibold text-slate-900">Push Notifications</div>
+                    <div className="text-xs text-slate-500">
+                      {notificationsEnabled
+                        ? 'Alerts enabled for inquiries, messages, and bookings'
+                        : 'Push notifications are paused'}
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={notificationsEnabled}
+                  onClick={toggleNotifications}
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${
+                    notificationsEnabled ? 'bg-emerald-600' : 'bg-slate-200'
+                  }`}
+                  title={notificationsEnabled ? 'Disable notifications' : 'Enable notifications'}
+                >
+                  <span className="sr-only">Toggle Push Notifications</span>
+                  <span
+                    aria-hidden="true"
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                      notificationsEnabled ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

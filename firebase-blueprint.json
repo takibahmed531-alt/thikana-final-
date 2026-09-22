@@ -59,6 +59,22 @@
           "type": "string",
           "maxLength": 300,
           "description": "Full confidential physical or permanent address."
+        },
+        "preferences": {
+          "type": "object",
+          "description": "Optional user preferences and settings.",
+          "properties": {
+            "theme": {
+              "type": "string",
+              "enum": ["light", "dark"],
+              "description": "User interface theme preference."
+            },
+            "notificationsEnabled": {
+              "type": "boolean",
+              "description": "Flag indicating whether notifications are enabled."
+            }
+          },
+          "required": ["theme", "notificationsEnabled"]
         }
       },
       "required": ["uid", "phoneNumber", "nidNumber", "dateOfBirth", "hiddenAddress"]
@@ -72,6 +88,12 @@
           "type": "string",
           "maxLength": 128,
           "description": "Unique identifier for the property listing."
+        },
+        "adId": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 50,
+          "description": "Unique short Ad ID used for quick search and reference."
         },
         "landlordUid": {
           "type": "string",
@@ -105,6 +127,25 @@
           "type": "array",
           "description": "Array of listing image URLs."
         },
+        "genderPreference": {
+          "type": "string",
+          "enum": ["Any", "Male", "Female"],
+          "description": "Gender preference for prospective tenants."
+        },
+        "availableSeats": {
+          "type": "number",
+          "description": "Available bed or seat count for shared or sublet listings."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["available", "rented"],
+          "description": "Current availability status of the property listing."
+        },
+        "coordinates": {
+          "type": "array",
+          "items": { "type": "number" },
+          "description": "Latitude and longitude coordinates array [lat, lng]."
+        },
         "createdAt": {
           "type": "string",
           "format": "date-time",
@@ -120,6 +161,173 @@
         "location",
         "amenities",
         "images",
+        "genderPreference",
+        "status",
+        "coordinates",
+        "createdAt"
+      ]
+    },
+    "Conversation": {
+      "title": "Conversation",
+      "description": "Chat thread between a landlord and tenant regarding a property listing.",
+      "type": "object",
+      "properties": {
+        "conversationId": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Unique identifier of the conversation document."
+        },
+        "propertyId": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Associated property listing ID."
+        },
+        "landlordUid": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Landlord UID."
+        },
+        "tenantUid": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Tenant UID."
+        },
+        "participants": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Array of participant UIDs [landlordUid, tenantUid]."
+        },
+        "propertyDetails": {
+          "type": "object",
+          "description": "Snapshot of property summary details."
+        },
+        "lastMessage": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Text snippet of the most recent message."
+        },
+        "lastMessageSenderUid": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Sender UID of the last message."
+        },
+        "lastMessageTimestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of the last message."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Conversation creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of the most recent update or message."
+        }
+      },
+      "required": [
+        "conversationId",
+        "propertyId",
+        "landlordUid",
+        "tenantUid",
+        "participants",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "ChatMessage": {
+      "title": "ChatMessage",
+      "description": "Individual message document inside a conversation messages subcollection.",
+      "type": "object",
+      "properties": {
+        "messageId": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Unique message document ID."
+        },
+        "senderUid": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "UID of the user who sent the message."
+        },
+        "text": {
+          "type": "string",
+          "maxLength": 2000,
+          "description": "Text body of the message."
+        },
+        "imageUrl": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Optional image URL attachment."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when message was sent."
+        }
+      },
+      "required": [
+        "messageId",
+        "senderUid",
+        "text",
+        "createdAt"
+      ]
+    },
+    "Report": {
+      "title": "Report",
+      "description": "User fraud, spam, or safety report filed against a property listing or user account.",
+      "type": "object",
+      "properties": {
+        "reportId": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Unique identifier of the report document."
+        },
+        "reporterUid": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "UID of the user filing the report."
+        },
+        "targetId": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Identifier of the reported target (propertyId or userUid)."
+        },
+        "targetType": {
+          "type": "string",
+          "enum": ["property", "user"],
+          "description": "Type of reported target entity."
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "Categorized reason for the report."
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 2000,
+          "description": "Optional detailed incident description."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "reviewed"],
+          "description": "Review status of the report."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when report was submitted."
+        }
+      },
+      "required": [
+        "reportId",
+        "reporterUid",
+        "targetId",
+        "targetType",
+        "reason",
+        "status",
         "createdAt"
       ]
     }
@@ -136,6 +344,18 @@
     "/properties/{propertyId}": {
       "schema": "Property",
       "description": "Public property listings readable by everyone, writable only by the listing landlord."
+    },
+    "/conversations/{conversationId}": {
+      "schema": "Conversation",
+      "description": "Conversation between participants (landlord and tenant)."
+    },
+    "/conversations/{conversationId}/messages/{messageId}": {
+      "schema": "ChatMessage",
+      "description": "Messages sent between participants in a conversation."
+    },
+    "/reports/{reportId}": {
+      "schema": "Report",
+      "description": "Fraud and abuse reports. Submittable by authenticated users; readable/updatable only by admins."
     }
   }
 }

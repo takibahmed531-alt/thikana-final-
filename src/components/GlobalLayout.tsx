@@ -4,7 +4,7 @@ import BottomTab from './BottomTab';
 
 export default function GlobalLayout() {
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 antialiased selection:bg-emerald-100 selection:text-emerald-900">
+    <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 transition-colors duration-300 antialiased selection:bg-emerald-100 selection:text-emerald-900 dark:selection:bg-emerald-950 dark:selection:text-emerald-200">
       {/* Desktop Top Navbar (hidden on mobile, visible md and up) */}
       <TopNav />
 
