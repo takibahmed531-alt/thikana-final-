@@ -226,10 +226,12 @@ export default function HomePage() {
     try {
       const area = searchArea.trim() || 'All areas';
       const category = selectedCategory || 'All';
-      await createSearchAlert(user.uid, area, category);
+      await createSearchAlert(user.uid, area, category, {
+        userEmail: user.email || '',
+      });
       setAlertMessage({
         type: 'success',
-        text: `Alert saved! We will notify you when properties in "${area}" (${category}) become available.`,
+        text: `Alert saved! We will send email notifications to ${user.email || 'your account'} when properties in "${area}" (${category}) become available.`,
       });
       // Auto-clear success message after 5 seconds
       setTimeout(() => {

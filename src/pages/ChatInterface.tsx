@@ -30,6 +30,7 @@ import {
   sendMessage as sendFirebaseMessage,
   softDeleteConversation,
   toggleStarConversation,
+  uploadChatImage,
   Conversation as LiveConversation,
   ChatMessage,
 } from '../services/chatService';
@@ -224,6 +225,7 @@ export default function ChatInterface() {
   const [searchQuery, setSearchQuery] = useState('');
   const [inputText, setInputText] = useState('');
   const [attachedImage, setAttachedImage] = useState<string | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [isReportOpen, setIsReportOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const hasInitializedActiveChat = useRef(false);
@@ -522,17 +524,23 @@ export default function ChatInterface() {
     }
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!user) return;
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (uploadEvent) => {
-        if (uploadEvent.target?.result) {
-          setAttachedImage(uploadEvent.target.result as string);
-        }
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    setIsUploadingImage(true);
+    try {
+      const downloadURL = await uploadChatImage(file);
+      setAttachedImage(downloadURL);
+    } catch (error: any) {
+      console.error('Failed to compress and upload image:', error);
+      alert('Failed to upload image. Please try again with a valid image file.');
+    } finally {
+      setIsUploadingImage(false);
+      if (e.target) {
+        e.target.value = '';
+      }
     }
   };
 
@@ -946,8 +954,19 @@ export default function ChatInterface() {
                   <div ref={messagesEndRef} />
                 </div>
 
+                {/* Image Uploading Progress Indicator */}
+                {isUploadingImage && (
+                  <div className="px-4 py-2 bg-emerald-50 border-t border-emerald-200 flex items-center justify-between text-xs text-emerald-800">
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin text-emerald-600 shrink-0" />
+                      <span className="font-medium">Compressing & uploading image to storage...</span>
+                    </div>
+                    <span className="text-[11px] text-emerald-600 font-semibold">Please wait</span>
+                  </div>
+                )}
+
                 {/* Image Attachment Preview before sending */}
-                {attachedImage && (
+                {attachedImage && !isUploadingImage && (
                   <div className="px-4 py-2 bg-slate-100 border-t border-slate-200 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <img
@@ -1005,27 +1024,37 @@ export default function ChatInterface() {
                     ref={fileInputRef}
                     onChange={handleImageUpload}
                     accept="image/*"
-                    disabled={!user}
+                    disabled={!user || isUploadingImage}
                     className="hidden"
                   />
 
                   {/* Attachment Icon Button */}
                   <button
                     type="button"
-                    disabled={!user}
+                    disabled={!user || isUploadingImage}
                     onClick={() => {
-                      if (!user) return;
+                      if (!user || isUploadingImage) return;
                       fileInputRef.current?.click();
                     }}
                     className={`p-2.5 rounded-xl transition-all ${
-                      !user
+                      !user || isUploadingImage
                         ? 'text-slate-300 cursor-not-allowed opacity-50'
-                        : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100 active:scale-95'
+                        : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100 active:scale-95 cursor-pointer'
                     }`}
-                    title={!user ? 'Please sign in to attach files' : 'Attach Property Image or Document'}
+                    title={
+                      !user
+                        ? 'Please sign in to attach files'
+                        : isUploadingImage
+                        ? 'Uploading image...'
+                        : 'Attach Property Image or Document'
+                    }
                     aria-label="Attach file"
                   >
-                    <Paperclip className="w-5 h-5" />
+                    {isUploadingImage ? (
+                      <Loader2 className="w-5 h-5 animate-spin text-emerald-600" />
+                    ) : (
+                      <Paperclip className="w-5 h-5" />
+                    )}
                   </button>
 
                   {/* Text Input Field */}
@@ -1033,10 +1062,16 @@ export default function ChatInterface() {
                     type="text"
                     value={inputText}
                     onChange={(e) => setInputText(e.target.value)}
-                    disabled={!user}
-                    placeholder={!user ? 'Please sign in to send messages...' : 'Type your message to landlord...'}
-                    className={`flex-1 rounded-xl px-4 py-2.5 text-xs sm:text-sm focus:outline-none transition-all border ${
+                    disabled={!user || isUploadingImage}
+                    placeholder={
                       !user
+                        ? 'Please sign in to send messages...'
+                        : isUploadingImage
+                        ? 'Uploading image attachment...'
+                        : 'Type your message to landlord...'
+                    }
+                    className={`flex-1 rounded-xl px-4 py-2.5 text-xs sm:text-sm focus:outline-none transition-all border ${
+                      !user || isUploadingImage
                         ? 'bg-slate-100 text-slate-400 placeholder-slate-400 cursor-not-allowed border-slate-200'
                         : 'bg-slate-100 text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-blue-500/20 focus:bg-white focus:border-blue-600 border-transparent'
                     }`}
@@ -1045,7 +1080,7 @@ export default function ChatInterface() {
                   {/* Primary Send Button */}
                   <button
                     type="submit"
-                    disabled={!user || (!inputText.trim() && !attachedImage) || isSending}
+                    disabled={!user || (!inputText.trim() && !attachedImage) || isSending || isUploadingImage}
                     className="p-2.5 sm:px-4 sm:py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white font-semibold flex items-center gap-1.5 transition-all shadow-sm shadow-blue-500/20 active:scale-95 cursor-pointer disabled:cursor-not-allowed"
                     aria-label="Send message"
                   >

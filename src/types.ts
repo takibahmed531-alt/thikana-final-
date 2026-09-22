@@ -143,3 +143,42 @@ export interface SupportTicket {
   createdAt: string;
 }
 
+export interface SearchAlert {
+  id?: string;
+  alertId?: string;
+  userUid: string;
+  userEmail?: string;
+  area: string;
+  category: string;
+  minRent?: number;
+  maxRent?: number;
+  genderPreference?: 'Any' | 'Male' | 'Female' | string;
+  emailNotifications?: boolean;
+  createdAt: any;
+  lastNotifiedAt?: any;
+}
+
+export interface NotificationLog {
+  id?: string;
+  logId: string;
+  userUid: string;
+  userEmail: string;
+  propertyId: string;
+  propertyTitle?: string;
+  alertId?: string;
+  status: 'sent' | 'delivered' | 'simulated' | 'failed';
+  createdAt: any;
+}
+
+export interface AlertMatchResult {
+  matchedAlertsCount: number;
+  dispatchedEmailsCount: number;
+  results: {
+    alertId?: string;
+    userUid: string;
+    userEmail: string;
+    status: 'sent' | 'simulated' | 'failed';
+    message?: string;
+  }[];
+}
+

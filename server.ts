@@ -3,6 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI, Type } from '@google/genai';
+import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -204,6 +205,79 @@ async function startServer() {
       // Seamlessly fallback to authentic Dhaka local data so UI never breaks or returns an error status
       const fallback = getDhakaAreaFallback(location);
       return res.json(fallback);
+    }
+  });
+
+  // Automated Email Alert Dispatch Endpoint
+  let mailTransporter: any = null;
+  function getMailTransporter(): any {
+    if (!mailTransporter) {
+      if (process.env.SMTP_HOST && process.env.SMTP_USER) {
+        mailTransporter = nodemailer.createTransport({
+          host: process.env.SMTP_HOST,
+          port: Number(process.env.SMTP_PORT) || 587,
+          secure: process.env.SMTP_SECURE === 'true',
+          auth: {
+            user: process.env.SMTP_USER,
+            pass: process.env.SMTP_PASS,
+          },
+        });
+      } else {
+        // Safe JSON / Stream fallback transporter for development and environments without active SMTP
+        mailTransporter = nodemailer.createTransport({
+          jsonTransport: true,
+        });
+      }
+    }
+    return mailTransporter;
+  }
+
+  // Endpoint to send a property match email alert
+  app.post('/api/notifications/property-alert-trigger', async (req, res) => {
+    try {
+      const { to, subject, html, text, propertyId, alertId, userUid } = req.body || {};
+
+      if (!to || typeof to !== 'string' || !to.includes('@')) {
+        return res.status(400).json({ error: 'Valid recipient email address is required.' });
+      }
+
+      if (!html || !subject) {
+        return res.status(400).json({ error: 'Subject and HTML email content are required.' });
+      }
+
+      const transporter = getMailTransporter();
+      const fromAddress = process.env.SMTP_FROM || '"Thikana Alerts" <alerts@thikana.app>';
+
+      const mailOptions = {
+        from: fromAddress,
+        to,
+        subject,
+        text: text || 'A new property matching your saved preferences has been listed on Thikana.',
+        html,
+      };
+
+      const sendResult = await transporter.sendMail(mailOptions);
+      const isSimulated = !process.env.SMTP_HOST;
+
+      console.log(
+        `[Email Alert Dispatch] ${isSimulated ? 'Simulated' : 'Sent'} property match alert to ${to} (Property: ${propertyId || 'N/A'}, Alert: ${alertId || 'N/A'})`
+      );
+
+      return res.json({
+        success: true,
+        status: isSimulated ? 'simulated' : 'sent',
+        messageId: sendResult.messageId || `msg_${Date.now()}`,
+        recipient: to,
+        propertyId,
+        alertId,
+        userUid,
+      });
+    } catch (error: any) {
+      console.error('[Email Alert Error]:', error);
+      return res.status(500).json({
+        error: 'Failed to dispatch email alert.',
+        details: error?.message || 'Unknown error',
+      });
     }
   });
 

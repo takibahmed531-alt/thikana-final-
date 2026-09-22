@@ -33,6 +33,7 @@ import {
   PropertyFilters,
 } from '../types';
 import { handleFirestoreError, OperationType } from './firestoreErrors';
+import { triggerPropertyAlerts } from './alertService';
 
 export interface PropertyCreationResponse {
   success: boolean;
@@ -242,6 +243,11 @@ export async function createProperty(
     } catch (err) {
       handleFirestoreError(err, OperationType.CREATE, `properties/${propertyId}`);
     }
+
+    // Step 5: Automatically trigger matching email alerts to subscribers in the background
+    triggerPropertyAlerts(completePropertyData).catch((alertErr) => {
+      console.info('Background property alert match notice:', alertErr);
+    });
 
     return {
       success: true,

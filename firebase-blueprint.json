@@ -380,6 +380,121 @@
         "createdAt",
         "status"
       ]
+    },
+    "SearchAlert": {
+      "title": "SearchAlert",
+      "description": "Saved user search preference for receiving automated email alerts on new property postings.",
+      "type": "object",
+      "properties": {
+        "alertId": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Unique search alert document ID."
+        },
+        "userUid": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Firebase Auth UID of the alert subscriber."
+        },
+        "userEmail": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "Email address where automated notifications are delivered."
+        },
+        "area": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "Target neighborhood or location to monitor (e.g., Dhanmondi, Banani, or All)."
+        },
+        "category": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Preferred property category (e.g., apartment, bachelor_sublet, or Any)."
+        },
+        "minRent": {
+          "type": "number",
+          "description": "Minimum monthly budget filter in BDT."
+        },
+        "maxRent": {
+          "type": "number",
+          "description": "Maximum monthly budget filter in BDT."
+        },
+        "genderPreference": {
+          "type": "string",
+          "enum": ["Any", "Male", "Female"],
+          "description": "Tenant gender preference criteria."
+        },
+        "emailNotifications": {
+          "type": "boolean",
+          "description": "Flag indicating whether automated email dispatch is active."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when the search alert was configured."
+        }
+      },
+      "required": [
+        "userUid",
+        "area",
+        "category",
+        "createdAt"
+      ]
+    },
+    "NotificationLog": {
+      "title": "NotificationLog",
+      "description": "Delivery log of automated email alerts dispatched for matched property listings.",
+      "type": "object",
+      "properties": {
+        "logId": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Unique notification log ID."
+        },
+        "userUid": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Recipient user UID."
+        },
+        "userEmail": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "Recipient email address."
+        },
+        "propertyId": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Matched property ID."
+        },
+        "propertyTitle": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "Matched property listing title."
+        },
+        "alertId": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Originating search alert ID."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["sent", "delivered", "simulated", "failed"],
+          "description": "Dispatch outcome status."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when alert email was dispatched."
+        }
+      },
+      "required": [
+        "logId",
+        "userUid",
+        "userEmail",
+        "propertyId",
+        "status",
+        "createdAt"
+      ]
     }
   },
   "firestore": {
@@ -410,6 +525,14 @@
     "/supportTickets/{ticketId}": {
       "schema": "SupportTicket",
       "description": "Support tickets submitted by authenticated users, readable and created by owner."
+    },
+    "/searchAlerts/{alertId}": {
+      "schema": "SearchAlert",
+      "description": "Saved user search preference alerts for automatic property matching."
+    },
+    "/notificationLogs/{logId}": {
+      "schema": "NotificationLog",
+      "description": "Logs of automated email alert dispatches readable by recipient user."
     }
   }
 }

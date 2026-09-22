@@ -3,6 +3,12 @@
  * Chat & Messaging Services using Firebase v9+ Modular SDK
  */
 
+import imageCompression from 'browser-image-compression';
+import {
+  ref,
+  uploadBytes,
+  getDownloadURL,
+} from 'firebase/storage';
 import {
   collection,
   doc,
@@ -20,8 +26,49 @@ import {
   arrayUnion,
   arrayRemove,
 } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db, storage } from '../firebase';
 import { handleFirestoreError, OperationType } from './firestoreErrors';
+
+// ----------------------------------------------------------------------
+// Image Compression & Chat Image Upload
+// ----------------------------------------------------------------------
+
+/**
+ * Compresses an image and uploads it to Firebase Storage for chat attachments.
+ *
+ * @param file The image File object to compress and upload
+ * @returns Promise resolving to the public download URL
+ */
+export async function uploadChatImage(file: File): Promise<string> {
+  try {
+    if (!file) {
+      throw new Error('No file provided for upload.');
+    }
+
+    // Compress the image using browser-image-compression
+    const options = {
+      maxSizeMB: 0.2,
+      maxWidthOrHeight: 1024,
+      useWebWorker: true,
+    };
+
+    const compressedFile = await imageCompression(file, options);
+
+    // Upload the compressed file to Firebase Storage under chatImages/{timestamp}_{filename}
+    const timestamp = Date.now();
+    const sanitizedFilename = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const storagePath = `chatImages/${timestamp}_${sanitizedFilename}`;
+    const storageRef = ref(storage, storagePath);
+
+    const snapshot = await uploadBytes(storageRef, compressedFile);
+    const downloadURL = await getDownloadURL(snapshot.ref);
+
+    return downloadURL;
+  } catch (error) {
+    console.error('Error uploading chat image:', error);
+    throw error;
+  }
+}
 
 // ----------------------------------------------------------------------
 // Task 1: TypeScript Interfaces

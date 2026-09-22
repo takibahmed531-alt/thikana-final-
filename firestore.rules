@@ -227,7 +227,7 @@ service cloud.firestore {
     }
 
     // 6. 'searchAlerts'
-    // Allow authenticated users to create and read their own search alerts
+    // Allow authenticated users to create, read, update and delete their own search alerts
     match /searchAlerts/{alertId} {
       allow read: if isSignedIn() && resource.data.userUid == request.auth.uid;
 
@@ -235,12 +235,28 @@ service cloud.firestore {
         && incoming().userUid == request.auth.uid
         && incoming().area is string && incoming().area.size() <= 200
         && incoming().category is string && incoming().category.size() <= 100
+        && (!('userEmail' in incoming()) || (incoming().userEmail is string && incoming().userEmail.size() <= 200))
+        && (!('minRent' in incoming()) || (incoming().minRent is number && incoming().minRent >= 0))
+        && (!('maxRent' in incoming()) || (incoming().maxRent is number && incoming().maxRent >= 0))
+        && (!('genderPreference' in incoming()) || (incoming().genderPreference is string && (incoming().genderPreference in ['Any', 'Male', 'Female'])))
+        && (!('emailNotifications' in incoming()) || (incoming().emailNotifications is bool))
         && incoming().createdAt is timestamp;
 
-      allow update, delete: if isSignedIn() && resource.data.userUid == request.auth.uid;
+      allow update: if isSignedIn() && resource.data.userUid == request.auth.uid
+        && incoming().userUid == request.auth.uid;
+
+      allow delete: if isSignedIn() && resource.data.userUid == request.auth.uid;
     }
 
-    // 7. 'supportTickets'
+    // 7. 'notificationLogs'
+    // Delivery records of automated alerts. Recipient can view their logs.
+    match /notificationLogs/{logId} {
+      allow read: if isSignedIn() && resource.data.userUid == request.auth.uid;
+      allow create: if isSignedIn();
+      allow update, delete: if false;
+    }
+
+    // 8. 'supportTickets'
     // Allow authenticated users to create support tickets and read their own tickets
     match /supportTickets/{ticketId} {
       allow read: if isSignedIn() && resource.data.userUid == request.auth.uid;
