@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   PlusCircle,
   Upload,
@@ -13,12 +13,18 @@ import {
   Mail,
   ShieldAlert,
   ArrowRight,
+  Edit,
 } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useAuth } from '../context/AuthContext';
-import { createProperty, generateShortAdId } from '../services/propertyService';
+import {
+  createProperty,
+  generateShortAdId,
+  getPropertyById,
+  updatePropertyListing,
+} from '../services/propertyService';
 import { PropertyCategory, GenderPreference } from '../types';
 
 // Fix for default Leaflet marker icons in bundlers
@@ -122,6 +128,8 @@ function MapFlyController({ center }: { center: [number, number] }) {
 export default function PostAdPage() {
   const { user, signInWithGoogle } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const editId = searchParams.get('edit');
 
   // Evaluate if user is logged in but has an unverified non-phone email address
   const isUnverified = Boolean(
@@ -141,6 +149,57 @@ export default function PostAdPage() {
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  // Task 3: If editId exists, fetch and populate property details
+  useEffect(() => {
+    if (!editId) return;
+
+    let isMounted = true;
+    async function fetchPropertyToEdit() {
+      try {
+        const res = await getPropertyById(editId!);
+        if (res.success && res.property && isMounted) {
+          const prop = res.property;
+          setTitle(prop.title || '');
+          setRentAmount(prop.rentAmount !== undefined ? String(prop.rentAmount) : '');
+          if (prop.category) setCategory(prop.category as PropertyCategory);
+          setLocation(prop.location || '');
+          if (prop.coordinates && prop.coordinates.length === 2) {
+            setCoordinates(prop.coordinates as [number, number]);
+          }
+          if (Array.isArray(prop.amenities)) {
+            setSelectedAmenities(prop.amenities);
+          }
+          if (prop.genderPreference) {
+            setGenderPreference(prop.genderPreference as GenderPreference);
+          }
+          if (prop.availableSeats !== undefined && prop.availableSeats !== null) {
+            setAvailableSeats(String(prop.availableSeats));
+          }
+          const existingImgs =
+            Array.isArray(prop.images) && prop.images.length > 0
+              ? prop.images
+              : Array.isArray((prop as any).imageUrls)
+              ? (prop as any).imageUrls
+              : [];
+          if (existingImgs.length > 0) {
+            setImagePreviews(existingImgs);
+          }
+        }
+      } catch (err: any) {
+        console.error('Error fetching property to edit:', err);
+        if (isMounted) {
+          setErrorMsg(err?.message || 'Failed to load property details for editing.');
+        }
+      }
+    }
+
+    fetchPropertyToEdit();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [editId]);
 
   const toggleAmenity = (amenity: string) => {
     setSelectedAmenities((prev) =>
@@ -192,32 +251,55 @@ export default function PostAdPage() {
           ? parseInt(availableSeats, 10)
           : undefined;
 
-      const res = await createProperty(
-        {
-          adId: generateShortAdId(),
+      // Task 4: Handle update when editId is present vs create when creating new listing
+      if (editId) {
+        const updatedData = {
           title: title.trim(),
           rentAmount: Number(rentAmount),
           category,
           location: location.trim(),
           amenities: selectedAmenities,
-          images: imagePreviews.length === 0 ? defaultImages : [],
           genderPreference,
           ...(parsedSeats !== undefined && !isNaN(parsedSeats) && parsedSeats >= 0
             ? { availableSeats: parsedSeats }
             : {}),
-          status: 'available',
           coordinates,
-        },
-        imageFiles,
-        user.uid
-      );
+          images: imagePreviews,
+        };
 
-      setSuccessMsg('Property listing created and stored in Firestore!');
-      setTimeout(() => {
-        navigate(`/property/${res.propertyId}`);
-      }, 1500);
+        await updatePropertyListing(editId, updatedData, imageFiles);
+        setSuccessMsg('Property listing updated successfully!');
+        setTimeout(() => {
+          navigate(`/property/${editId}`);
+        }, 1500);
+      } else {
+        const res = await createProperty(
+          {
+            adId: generateShortAdId(),
+            title: title.trim(),
+            rentAmount: Number(rentAmount),
+            category,
+            location: location.trim(),
+            amenities: selectedAmenities,
+            images: imagePreviews.length === 0 ? defaultImages : [],
+            genderPreference,
+            ...(parsedSeats !== undefined && !isNaN(parsedSeats) && parsedSeats >= 0
+              ? { availableSeats: parsedSeats }
+              : {}),
+            status: 'available',
+            coordinates,
+          },
+          imageFiles,
+          user.uid
+        );
+
+        setSuccessMsg('Property listing created and stored in Firestore!');
+        setTimeout(() => {
+          navigate(`/property/${res.propertyId}`);
+        }, 1500);
+      }
     } catch (err: any) {
-      console.error('Error posting property:', err);
+      console.error('Error saving property:', err);
       setErrorMsg(err?.message || 'Failed to publish property listing to Firebase.');
     } finally {
       setSubmitting(false);
@@ -233,10 +315,12 @@ export default function PostAdPage() {
           Landlord Portal
         </div>
         <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
-          Post a Property Listing
+          {editId ? 'Edit Property Listing' : 'Post a Property Listing'}
         </h1>
         <p className="text-sm text-slate-500 mt-1">
-          List your apartment, house, bachelor sublet, or hostel room across Dhaka with verified security.
+          {editId
+            ? 'Update your property specifications, amenities, location, and photos.'
+            : 'List your apartment, house, bachelor sublet, or hostel room across Dhaka with verified security.'}
         </p>
       </div>
 
@@ -541,8 +625,14 @@ export default function PostAdPage() {
               disabled={submitting}
               className="inline-flex items-center gap-2 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold shadow-sm transition-all cursor-pointer disabled:opacity-60"
             >
-              <PlusCircle className="w-4 h-4" />
-              {submitting ? 'Publishing...' : 'Publish to Thikana'}
+              {editId ? <Edit className="w-4 h-4" /> : <PlusCircle className="w-4 h-4" />}
+              {submitting
+                ? editId
+                  ? 'Updating...'
+                  : 'Publishing...'
+                : editId
+                ? 'Update Property'
+                : 'Publish to Thikana'}
             </button>
           </div>
         </form>

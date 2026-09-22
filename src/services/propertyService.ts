@@ -16,6 +16,8 @@ import {
   setDoc,
   getDoc,
   getDocs,
+  deleteDoc,
+  updateDoc,
   query,
   where,
   orderBy,
@@ -33,7 +35,6 @@ import {
   PropertyFilters,
 } from '../types';
 import { handleFirestoreError, OperationType } from './firestoreErrors';
-import { triggerPropertyAlerts } from './alertService';
 
 export interface PropertyCreationResponse {
   success: boolean;
@@ -244,11 +245,6 @@ export async function createProperty(
       handleFirestoreError(err, OperationType.CREATE, `properties/${propertyId}`);
     }
 
-    // Step 5: Automatically trigger matching email alerts to subscribers in the background
-    triggerPropertyAlerts(completePropertyData).catch((alertErr) => {
-      console.info('Background property alert match notice:', alertErr);
-    });
-
     return {
       success: true,
       propertyId,
@@ -414,6 +410,58 @@ export async function getPropertyByAdId(adId: string): Promise<SinglePropertyRes
     };
   } catch (error: any) {
     console.error(`Error searching property by Ad ID ${adId}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Deletes a property document from the 'properties' collection in Firestore.
+ *
+ * @param propertyId The unique property document ID
+ * @returns Promise resolving to true on success
+ */
+export async function deletePropertyListing(propertyId: string): Promise<boolean> {
+  try {
+    if (!propertyId || !propertyId.trim()) {
+      throw new Error('Valid Property ID is required.');
+    }
+    await deleteDoc(doc(db, 'properties', propertyId));
+    return true;
+  } catch (error: any) {
+    console.error(`Error deleting property listing ${propertyId}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Updates a property document in the 'properties' collection in Firestore,
+ * optionally compressing and uploading new images and merging their URLs.
+ *
+ * @param propertyId The unique property document ID
+ * @param updatedData The updated property fields object
+ * @param newImageFiles Optional array of new image files to compress and upload
+ * @returns Promise resolving to true on success
+ */
+export async function updatePropertyListing(
+  propertyId: string,
+  updatedData: any,
+  newImageFiles: File[] = []
+): Promise<boolean> {
+  try {
+    if (!propertyId || !propertyId.trim()) {
+      throw new Error('Valid Property ID is required.');
+    }
+
+    if (newImageFiles && newImageFiles.length > 0) {
+      const uploadedUrls = await uploadPropertyImages(newImageFiles);
+      const existingImages = Array.isArray(updatedData?.images) ? updatedData.images : [];
+      updatedData.images = [...existingImages, ...uploadedUrls];
+    }
+
+    await updateDoc(doc(db, 'properties', propertyId), updatedData);
+    return true;
+  } catch (error: any) {
+    console.error(`Error updating property ${propertyId}:`, error);
     throw error;
   }
 }

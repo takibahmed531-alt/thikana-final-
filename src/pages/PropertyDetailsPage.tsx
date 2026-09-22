@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { getPropertyById } from '../services/propertyService';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { getPropertyById, deletePropertyListing } from '../services/propertyService';
 import { useAuth } from '../context/AuthContext';
 import {
   MapPin,
@@ -32,6 +32,8 @@ import {
   Flag,
   Copy,
   Check,
+  Trash2,
+  Edit,
 } from 'lucide-react';
 import MapComponent from '../components/MapComponent';
 import NeighborhoodGuide from '../components/NeighborhoodGuide';
@@ -135,8 +137,10 @@ const PROPERTY_DETAILS_DATA: Record<string, any> = {
 
 export default function PropertyDetailsPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { user, openAuthModal } = useAuth();
   const [isSaved, setIsSaved] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
@@ -172,6 +176,7 @@ export default function PropertyDetailsPage() {
 
             setFirestoreProperty({
               id: p.propertyId,
+              landlordUid: p.landlordUid,
               adId: p.adId,
               title: p.title,
               rentAmount: p.rentAmount,
@@ -258,6 +263,24 @@ export default function PropertyDetailsPage() {
     maximumFractionDigits: 0,
   }).format(property.depositAmount || property.rentAmount * 2);
 
+  const handleDeleteProperty = async () => {
+    const confirmed = window.confirm(
+      'Are you sure you want to delete this listing? This action cannot be undone.'
+    );
+    if (!confirmed) return;
+
+    setIsDeleting(true);
+    try {
+      await deletePropertyListing(property.id);
+      navigate('/');
+    } catch (err: any) {
+      console.error('Error deleting property listing:', err);
+      alert(err?.message || 'Failed to delete property listing. Please try again.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
@@ -287,6 +310,30 @@ export default function PropertyDetailsPage() {
         </Link>
 
         <div className="flex items-center gap-2">
+          {user?.uid === property.landlordUid && (
+            <>
+              <Link
+                to={`/post-ad?edit=${property.id}`}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-sm font-medium transition-colors shadow-sm cursor-pointer"
+                title="Edit this listing"
+              >
+                <Edit className="w-4 h-4" />
+                <span className="hidden sm:inline">Edit Ad</span>
+              </Link>
+
+              <button
+                type="button"
+                onClick={handleDeleteProperty}
+                disabled={isDeleting}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-600 text-sm font-medium transition-colors shadow-sm cursor-pointer disabled:opacity-60"
+                title="Delete this listing"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span className="hidden sm:inline">{isDeleting ? 'Deleting...' : 'Delete Ad'}</span>
+              </button>
+            </>
+          )}
+
           <button
             type="button"
             onClick={() => setIsSaved(!isSaved)}

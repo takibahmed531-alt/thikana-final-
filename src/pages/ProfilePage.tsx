@@ -174,10 +174,10 @@ export default function ProfilePage() {
     try {
       const privRef = doc(db, 'privateUsers', user.uid);
       await updateDoc(privRef, {
-        phoneNumber: phoneNumber.trim(),
-        nidNumber: nidNumber.trim(),
-        dateOfBirth: dateOfBirth.trim(),
-        hiddenAddress: hiddenAddress.trim(),
+        phoneNumber: (phoneNumber || '').trim(),
+        nidNumber: (nidNumber || '').trim(),
+        dateOfBirth: (dateOfBirth || '').trim(),
+        hiddenAddress: (hiddenAddress || '').trim(),
       });
       await refreshProfile();
       setPrivateMsg({ type: 'success', text: 'Private identity vault updated securely.' });

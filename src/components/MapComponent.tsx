@@ -62,6 +62,8 @@ export default function MapComponent({
         center={position}
         zoom={15}
         scrollWheelZoom={false}
+        dragging={!L.Browser.mobile}
+        {...({ tap: !L.Browser.mobile } as any)}
         className="w-full h-full z-0"
       >
         <TileLayer
