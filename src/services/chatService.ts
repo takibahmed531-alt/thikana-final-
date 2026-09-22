@@ -174,7 +174,7 @@ export async function startConversation(
       propertyId,
       landlordUid,
       tenantUid,
-      participants: [landlordUid, tenantUid],
+      participants: [tenantUid, landlordUid],
       propertyDetails: propertyDetails || {},
       lastMessage: '',
       lastMessageSenderUid: '',
@@ -235,7 +235,20 @@ export async function startConversationAndSendMessage(
     const convResult = await startConversation(propertyId, landlordUid, tenantUid, propertyDetails);
     const { conversationId, conversation, isNew } = convResult;
 
-    // 2. Send the initial message if message text is provided
+    // 2. Ensure the parent conversation document has explicit landlordUid, tenantUid, participants, and updatedAt
+    const parentRef = doc(db, 'conversations', conversationId);
+    try {
+      await updateDoc(parentRef, {
+        landlordUid,
+        tenantUid,
+        participants: [tenantUid, landlordUid],
+        updatedAt: serverTimestamp(),
+      });
+    } catch (updateErr) {
+      console.warn('Non-blocking conversation metadata update notice:', updateErr);
+    }
+
+    // 3. Send the initial message if message text is provided
     let sentMsg: ChatMessage | undefined;
     const trimmedMessage = (messageText || '').trim();
     if (trimmedMessage) {
@@ -244,7 +257,12 @@ export async function startConversationAndSendMessage(
 
     return {
       conversationId,
-      conversation,
+      conversation: {
+        ...conversation,
+        landlordUid,
+        tenantUid,
+        participants: [tenantUid, landlordUid],
+      },
       message: sentMsg,
       isNew,
     };
@@ -354,8 +372,7 @@ export function subscribeToUserConversations(
   const conversationsRef = collection(db, 'conversations');
   const q = query(
     conversationsRef,
-    where('participants', 'array-contains', userUid),
-    orderBy('updatedAt', 'desc')
+    where('participants', 'array-contains', userUid)
   );
 
   return onSnapshot(
@@ -365,6 +382,10 @@ export function subscribeToUserConversations(
         id: docSnap.id,
         ...(docSnap.data() as Conversation),
       }));
+
+      // Sort client-side by updatedAt desc to bypass composite index requirement
+      conversations.sort((a, b) => (b.updatedAt?.toMillis?.() || b.updatedAt?.seconds || 0) - (a.updatedAt?.toMillis?.() || a.updatedAt?.seconds || 0));
+
       callback(conversations);
     },
     (error) => {

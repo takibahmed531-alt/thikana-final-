@@ -833,7 +833,7 @@ export default function PropertyDetailsPage() {
                 </button>
 
                 <Link
-                  to={`/messages?newPropertyId=${encodeURIComponent(property.id || id || 'prop-1')}&landlordUid=${encodeURIComponent(property.landlordUid || 'landlord_demo_host')}`}
+                  to={`/messages?newPropertyId=${property?.id || id || 'prop-1'}&landlordUid=${property?.landlordUid || 'landlord_demo_host'}`}
                   className="w-full flex items-center justify-center gap-2 px-6 py-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition-colors"
                 >
                   <span>{t('openFullMessenger')}</span>
@@ -890,7 +890,7 @@ export default function PropertyDetailsPage() {
               </div>
               <div className="flex items-center gap-1">
                 <Link
-                  to={`/messages?newPropertyId=${encodeURIComponent(property.id || id || 'prop-1')}&landlordUid=${encodeURIComponent(property.landlordUid || 'landlord_demo_host')}`}
+                  to={`/messages?newPropertyId=${property?.id || id || 'prop-1'}&landlordUid=${property?.landlordUid || 'landlord_demo_host'}`}
                   className="p-1.5 rounded-full hover:bg-white/10 text-slate-300 hover:text-white transition-colors"
                   title="Expand to Full Messenger"
                 >
