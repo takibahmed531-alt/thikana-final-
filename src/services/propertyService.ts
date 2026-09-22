@@ -206,10 +206,30 @@ export async function createProperty(
         ? [propertyData.coordinates[0], propertyData.coordinates[1]]
         : [23.8103, 90.4125];
 
-    // Optional availableSeats validation
+    // Optional availableSeats and specifications validation
     const parsedSeats =
       propertyData.availableSeats !== undefined && propertyData.availableSeats !== null
         ? Number(propertyData.availableSeats)
+        : undefined;
+
+    const parsedBedrooms =
+      propertyData.bedrooms !== undefined && propertyData.bedrooms !== null && !isNaN(Number(propertyData.bedrooms))
+        ? Number(propertyData.bedrooms)
+        : undefined;
+
+    const parsedBathrooms =
+      propertyData.bathrooms !== undefined && propertyData.bathrooms !== null && !isNaN(Number(propertyData.bathrooms))
+        ? Number(propertyData.bathrooms)
+        : undefined;
+
+    const parsedAreaSqft =
+      propertyData.areaSqft !== undefined && propertyData.areaSqft !== null && !isNaN(Number(propertyData.areaSqft))
+        ? Number(propertyData.areaSqft)
+        : undefined;
+
+    const parsedFloor =
+      propertyData.floor !== undefined && propertyData.floor !== null && String(propertyData.floor).trim() !== ''
+        ? String(propertyData.floor).trim()
         : undefined;
 
     // Step 3: Build listing payload conforming to Firestore security schema
@@ -236,6 +256,10 @@ export async function createProperty(
       ...(parsedSeats !== undefined && !isNaN(parsedSeats) && parsedSeats >= 0
         ? { availableSeats: parsedSeats }
         : {}),
+      ...(parsedBedrooms !== undefined ? { bedrooms: parsedBedrooms } : {}),
+      ...(parsedBathrooms !== undefined ? { bathrooms: parsedBathrooms } : {}),
+      ...(parsedAreaSqft !== undefined ? { areaSqft: parsedAreaSqft } : {}),
+      ...(parsedFloor !== undefined ? { floor: parsedFloor } : {}),
       status: 'available', // Default to 'available' per specification
       coordinates: sanitizedCoordinates,
       createdAt: serverTimestamp(),

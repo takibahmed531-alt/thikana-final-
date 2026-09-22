@@ -405,7 +405,7 @@ export default function HomePage() {
                 value={searchArea}
                 onChange={(e) => setSearchArea(e.target.value)}
                 placeholder={t('homeSearchPlaceholder')}
-                className="w-full pl-12 pr-24 py-3.5 sm:py-4 bg-white/95 text-slate-900 placeholder-slate-400 rounded-2xl text-sm sm:text-base font-medium focus:outline-none focus:ring-4 focus:ring-emerald-500/30 transition-all border border-white/20"
+                className="w-full pl-12 pr-32 py-3.5 sm:py-4 bg-white/95 text-slate-900 placeholder-slate-400 rounded-2xl text-sm sm:text-base font-medium focus:outline-none focus:ring-4 focus:ring-emerald-500/30 transition-all border border-white/20"
               />
 
               <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
@@ -419,6 +419,18 @@ export default function HomePage() {
                     <X className="w-4 h-4" />
                   </button>
                 )}
+
+                <button
+                  type="button"
+                  className="p-2 rounded-xl border bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-500 shadow-sm transition-all cursor-pointer"
+                  title="Search"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    (document.activeElement as HTMLElement)?.blur();
+                  }}
+                >
+                  <Search className="w-4 h-4" />
+                </button>
 
                 <button
                   type="button"

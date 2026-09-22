@@ -68,150 +68,7 @@ interface Conversation {
   starredBy?: string[];
 }
 
-const DUMMY_CONVERSATIONS: Conversation[] = [
-  {
-    id: 'c1',
-    user: {
-      name: 'Engr. Tariqul Islam',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
-      isVerified: true,
-      role: 'Landlord',
-      online: true,
-    },
-    propertyTitle: 'Modern 3-BHK Flat with Rooftop Garden',
-    propertyPrice: '৳36,000/mo',
-    propertyLocation: 'Road 9A, Dhanmondi',
-    lastMessage: 'Sure, you are welcome to visit tomorrow at 4:30 PM.',
-    lastMessageTime: '10:42 AM',
-    unreadCount: 2,
-    messages: [
-      {
-        id: 'm1',
-        sender: 'other',
-        text: 'Assalamu Alaikum! Thank you for showing interest in my 3-BHK flat on Road 9A, Dhanmondi.',
-        timestamp: '10:30 AM',
-      },
-      {
-        id: 'm2',
-        sender: 'me',
-        text: 'Walaikum Assalam Tariqul bhai. Is the flat available for immediate move-in? And is the gas line cylinder or government line?',
-        timestamp: '10:33 AM',
-        status: 'read',
-      },
-      {
-        id: 'm3',
-        sender: 'other',
-        text: 'Yes, it is available from the 1st of next month. It has a continuous government pipeline gas supply, along with 24/7 generator backup.',
-        timestamp: '10:36 AM',
-      },
-      {
-        id: 'm4',
-        sender: 'me',
-        text: 'That sounds great! Can I schedule a physical viewing sometime this week?',
-        timestamp: '10:40 AM',
-        status: 'read',
-      },
-      {
-        id: 'm5',
-        sender: 'other',
-        text: 'Sure, you are welcome to visit tomorrow at 4:30 PM. The caretaker will be at the gate to assist you.',
-        timestamp: '10:42 AM',
-      },
-    ],
-  },
-  {
-    id: 'c2',
-    user: {
-      name: 'Tanvir Hossain',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80',
-      isVerified: true,
-      role: 'Landlord',
-      online: false,
-    },
-    propertyTitle: 'Furnished Bachelor Studio Unit',
-    propertyPrice: '৳16,500/mo',
-    propertyLocation: 'Block C, Banani',
-    lastMessage: 'The WiFi router is 50 Mbps high-speed fiber.',
-    lastMessageTime: 'Yesterday',
-    unreadCount: 0,
-    messages: [
-      {
-        id: 'm201',
-        sender: 'me',
-        text: 'Hi Tanvir, is the bachelor studio suitable for 2 people or strictly single occupancy?',
-        timestamp: 'Yesterday 3:15 PM',
-        status: 'read',
-      },
-      {
-        id: 'm202',
-        sender: 'other',
-        text: 'Hi! It is best suited for 1 person, but 2 bachelor students can share if comfortable.',
-        timestamp: 'Yesterday 3:20 PM',
-      },
-      {
-        id: 'm203',
-        sender: 'other',
-        text: 'The WiFi router is 50 Mbps high-speed fiber.',
-        timestamp: 'Yesterday 3:21 PM',
-      },
-    ],
-  },
-  {
-    id: 'c3',
-    user: {
-      name: 'Begum Rokeya',
-      avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&q=80',
-      isVerified: true,
-      role: 'Landlord',
-      online: true,
-    },
-    propertyTitle: 'Spacious Family Floor with Lift',
-    propertyPrice: '৳45,000/mo',
-    propertyLocation: 'Sector 11, Uttara',
-    lastMessage: 'Yes, car parking spot #2 is included in this rent.',
-    lastMessageTime: '2 days ago',
-    unreadCount: 0,
-    messages: [
-      {
-        id: 'm301',
-        sender: 'me',
-        text: 'Hello, is dedicated car parking included in the ৳45k rent?',
-        timestamp: 'Sep 19, 11:00 AM',
-        status: 'delivered',
-      },
-      {
-        id: 'm302',
-        sender: 'other',
-        text: 'Yes, car parking spot #2 is included in this rent.',
-        timestamp: 'Sep 19, 11:15 AM',
-      },
-    ],
-  },
-  {
-    id: 'c4',
-    user: {
-      name: 'Arif Chowdhury',
-      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=300&q=80',
-      isVerified: false,
-      role: 'Agent',
-      online: false,
-    },
-    propertyTitle: 'Luxury 4-BHK South Facing Unit',
-    propertyPrice: '৳52,000/mo',
-    propertyLocation: 'Mirpur DOHS',
-    lastMessage: 'I will send you photos of the master bathroom shortly.',
-    lastMessageTime: 'Sep 18',
-    unreadCount: 0,
-    messages: [
-      {
-        id: 'm401',
-        sender: 'other',
-        text: 'I will send you photos of the master bathroom shortly.',
-        timestamp: 'Sep 18, 4:00 PM',
-      },
-    ],
-  },
-];
+const DUMMY_CONVERSATIONS: Conversation[] = [];
 
 export default function ChatInterface() {
   const { user } = useAuth();
@@ -229,7 +86,7 @@ export default function ChatInterface() {
   const [isSending, setIsSending] = useState(false);
   const [isConversationsLoaded, setIsConversationsLoaded] = useState(false);
 
-  const [activeChatId, setActiveChatId] = useState<string>(urlChatId || DUMMY_CONVERSATIONS[0].id);
+  const [activeChatId, setActiveChatId] = useState<string>(urlChatId || DUMMY_CONVERSATIONS[0]?.id || '');
   const [searchQuery, setSearchQuery] = useState('');
   const [inputText, setInputText] = useState('');
   const [attachedImage, setAttachedImage] = useState<string | null>(null);
@@ -251,8 +108,6 @@ export default function ChatInterface() {
       setPartnerProfiles({});
       setIsConversationsLoaded(false);
       hasInitializedActiveChat.current = false;
-    } else {
-      setDummyConversations((prev) => (prev.length === 0 ? DUMMY_CONVERSATIONS : prev));
     }
   }, [user]);
 
@@ -400,6 +255,11 @@ export default function ChatInterface() {
       });
   }, [newPropertyId, landlordUid, liveConversations, user]);
 
+  // Mark conversations as read when user opens and receives liveConversations
+  useEffect(() => {
+    localStorage.setItem('lastSeenChatTime', Date.now().toString());
+  }, [liveConversations]);
+
   // Map live Firestore conversations to UI presentation format
   const mappedLiveConversations: Conversation[] = useMemo(() => {
     return liveConversations.map((liveConv) => {
@@ -486,7 +346,7 @@ export default function ChatInterface() {
         setActiveChatId(urlChatId);
         hasInitializedActiveChat.current = true;
       } else if (!hasInitializedActiveChat.current && allConversations.length > 0) {
-        setActiveChatId(allConversations[0]?.id || DUMMY_CONVERSATIONS[0].id);
+        setActiveChatId(allConversations[0]?.id || '');
         hasInitializedActiveChat.current = true;
       }
     } else if (!newPropertyId && !hasInitializedActiveChat.current && allConversations.length > 0) {
@@ -1055,7 +915,7 @@ export default function ChatInterface() {
                 <div className="px-4 py-2.5 bg-amber-50/95 border-b border-amber-200/80 flex items-center gap-2.5 text-xs text-amber-900 shadow-2xs">
                   <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0" />
                   <p className="leading-snug text-[11px] sm:text-xs">
-                    For your security, never share personal details like Phone Numbers, Email, NID, or OTPs. Keep all communication within Thikana.
+                    For your security, NEVER send advance money or booking fees before physically visiting the property. Do not share OTPs. Keep all communication within Thikana.
                   </p>
                 </div>
 
@@ -1190,31 +1050,6 @@ export default function ChatInterface() {
                     </button>
                   </div>
                 )}
-
-                {/* Quick Icebreaker Inquiry Chips */}
-                <div className="px-4 py-2 bg-white border-t border-slate-100 flex gap-1.5 overflow-x-auto scrollbar-none text-[11px]">
-                  {[
-                    'Is the flat still available?',
-                    'Can I visit tomorrow at 4 PM?',
-                    'Is parking included?',
-                    'Can you share gas bill details?',
-                  ].map((chip, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      disabled={!user}
-                      onClick={() => {
-                        if (!user) return;
-                        setInputText(chip);
-                      }}
-                      className={`shrink-0 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 transition-colors ${
-                        !user ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-200'
-                      }`}
-                    >
-                      {chip}
-                    </button>
-                  ))}
-                </div>
 
                 {/* ---------------------------------------------------- */}
                 {/* Task 4: Message Input Area (Sticky at Bottom)        */}

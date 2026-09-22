@@ -1,14 +1,44 @@
+import { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { Home, Bookmark, MessageSquare, PlusCircle, User } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
+import { subscribeToUserConversations } from '../services/chatService';
 
 export default function BottomTab() {
   const { t } = useLanguage();
+  const { user } = useAuth();
+  const [hasMsgs, setHasMsgs] = useState(false);
+
+  // Subscribe to user conversations to show real-time unread/active message indicator
+  useEffect(() => {
+    if (!user?.uid) {
+      setHasMsgs(false);
+      return;
+    }
+    const unsubscribe = subscribeToUserConversations(
+      user.uid,
+      (convs) => {
+        const lastSeen = Number(localStorage.getItem('lastSeenChatTime') || 0);
+        const hasNew = convs.some((c) => {
+          const time =
+            c.updatedAt?.toMillis?.() ||
+            (c.updatedAt?.seconds ? c.updatedAt.seconds * 1000 : 0);
+          return time > lastSeen;
+        });
+        setHasMsgs(hasNew);
+      },
+      console.error
+    );
+    return () => {
+      unsubscribe();
+    };
+  }, [user?.uid]);
 
   const navItems = [
     { to: '/', label: t('home'), icon: Home, exact: true },
     { to: '/saved', label: t('saved'), icon: Bookmark, exact: false },
-    { to: '/messages', label: t('messages'), icon: MessageSquare, exact: false, badge: 2 },
+    { to: '/messages', label: t('messages'), icon: MessageSquare, exact: false },
     { to: '/post-ad', label: t('postAd'), icon: PlusCircle, exact: false, highlight: true },
     { to: '/profile', label: t('profile'), icon: User, exact: false },
   ];
@@ -26,6 +56,11 @@ export default function BottomTab() {
               key={item.to}
               to={item.to}
               end={item.exact}
+              onClick={() => {
+                if (item.to === '/messages') {
+                  setHasMsgs(false);
+                }
+              }}
               className={({ isActive }) =>
                 `flex flex-col items-center justify-center min-w-[56px] min-h-[46px] py-1 px-1 rounded-xl transition-colors duration-300 ${
                   item.highlight
@@ -58,10 +93,8 @@ export default function BottomTab() {
                           : 'stroke-[1.75]'
                       }`}
                     />
-                    {item.badge && (
-                      <span className="absolute -top-1 -right-1 px-1 min-w-[14px] h-[14px] bg-emerald-600 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
-                        {item.badge}
-                      </span>
+                    {item.to === '/messages' && hasMsgs && (
+                      <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-rose-500 rounded-full ring-2 ring-white dark:ring-slate-900 animate-pulse" />
                     )}
                     {isActive && !item.highlight && (
                       <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-emerald-600 dark:bg-emerald-500 rounded-full" />

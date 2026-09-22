@@ -72,6 +72,10 @@ export interface PropertyListing {
   minAge?: number;
   maxAge?: number;
   availableSeats?: number;
+  bedrooms?: number;
+  bathrooms?: number;
+  areaSqft?: number;
+  floor?: string;
   status: 'available' | 'rented';
   coordinates: [number, number];
   createdAt: any;
@@ -92,6 +96,10 @@ export interface PropertyDataInput {
   minAge?: number;
   maxAge?: number;
   availableSeats?: number;
+  bedrooms?: number;
+  bathrooms?: number;
+  areaSqft?: number;
+  floor?: string;
   status: 'available' | 'rented';
   coordinates: [number, number];
 }

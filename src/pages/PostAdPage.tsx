@@ -147,6 +147,10 @@ export default function PostAdPage() {
   const [minAge, setMinAge] = useState('');
   const [maxAge, setMaxAge] = useState('');
   const [availableSeats, setAvailableSeats] = useState<string>('');
+  const [bedrooms, setBedrooms] = useState('');
+  const [bathrooms, setBathrooms] = useState('');
+  const [areaSqft, setAreaSqft] = useState('');
+  const [floor, setFloor] = useState('');
   const [coordinates, setCoordinates] = useState<[number, number]>(DHAKA_DEFAULT_COORDINATES);
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>(['WiFi', 'Lift / Elevator', 'CCTV Security']);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
@@ -184,6 +188,10 @@ export default function PostAdPage() {
           if (prop.availableSeats !== undefined && prop.availableSeats !== null) {
             setAvailableSeats(String(prop.availableSeats));
           }
+          if ((prop as any).bedrooms !== undefined) setBedrooms(String((prop as any).bedrooms));
+          if ((prop as any).bathrooms !== undefined) setBathrooms(String((prop as any).bathrooms));
+          if ((prop as any).areaSqft !== undefined) setAreaSqft(String((prop as any).areaSqft));
+          if ((prop as any).floor !== undefined) setFloor(String((prop as any).floor));
           const existingImgs =
             Array.isArray(prop.images) && prop.images.length > 0
               ? prop.images
@@ -255,6 +263,10 @@ export default function PostAdPage() {
 
       const parsedMinAge = minAge.trim() !== '' ? parseInt(minAge, 10) : undefined;
       const parsedMaxAge = maxAge.trim() !== '' ? parseInt(maxAge, 10) : undefined;
+      const parsedBedrooms = bedrooms.trim() !== '' ? parseInt(bedrooms, 10) : undefined;
+      const parsedBathrooms = bathrooms.trim() !== '' ? parseInt(bathrooms, 10) : undefined;
+      const parsedAreaSqft = areaSqft.trim() !== '' ? parseInt(areaSqft, 10) : undefined;
+      const parsedFloor = floor.trim() !== '' ? floor.trim() : undefined;
 
       // Task 4: Handle update when editId is present vs create when creating new listing
       if (editId) {
@@ -271,6 +283,10 @@ export default function PostAdPage() {
           ...(parsedSeats !== undefined && !isNaN(parsedSeats) && parsedSeats >= 0
             ? { availableSeats: parsedSeats }
             : {}),
+          ...(parsedBedrooms !== undefined && !isNaN(parsedBedrooms) && parsedBedrooms >= 0 ? { bedrooms: parsedBedrooms } : {}),
+          ...(parsedBathrooms !== undefined && !isNaN(parsedBathrooms) && parsedBathrooms >= 0 ? { bathrooms: parsedBathrooms } : {}),
+          ...(parsedAreaSqft !== undefined && !isNaN(parsedAreaSqft) && parsedAreaSqft > 0 ? { areaSqft: parsedAreaSqft } : {}),
+          ...(parsedFloor !== undefined ? { floor: parsedFloor } : {}),
           coordinates,
           images: imagePreviews,
         };
@@ -297,6 +313,10 @@ export default function PostAdPage() {
             ...(parsedSeats !== undefined && !isNaN(parsedSeats) && parsedSeats >= 0
               ? { availableSeats: parsedSeats }
               : {}),
+            ...(parsedBedrooms !== undefined && !isNaN(parsedBedrooms) && parsedBedrooms >= 0 ? { bedrooms: parsedBedrooms } : {}),
+            ...(parsedBathrooms !== undefined && !isNaN(parsedBathrooms) && parsedBathrooms >= 0 ? { bathrooms: parsedBathrooms } : {}),
+            ...(parsedAreaSqft !== undefined && !isNaN(parsedAreaSqft) && parsedAreaSqft > 0 ? { areaSqft: parsedAreaSqft } : {}),
+            ...(parsedFloor !== undefined ? { floor: parsedFloor } : {}),
             status: 'available',
             coordinates,
           },
@@ -536,6 +556,58 @@ export default function PostAdPage() {
                 />
               </div>
             </fieldset>
+          </div>
+
+          {/* Property Specifications (Optional) */}
+          <div className="space-y-2">
+            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wide">
+              Property Specifications (Optional)
+            </label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div>
+                <label className="block text-[11px] font-medium text-slate-600 mb-1">Bedrooms</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={bedrooms}
+                  onChange={(e) => setBedrooms(e.target.value)}
+                  placeholder="e.g. 3"
+                  className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 shadow-xs"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-medium text-slate-600 mb-1">Bathrooms</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={bathrooms}
+                  onChange={(e) => setBathrooms(e.target.value)}
+                  placeholder="e.g. 2"
+                  className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 shadow-xs"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-medium text-slate-600 mb-1">Total Sqft</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={areaSqft}
+                  onChange={(e) => setAreaSqft(e.target.value)}
+                  placeholder="e.g. 1250"
+                  className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 shadow-xs"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-medium text-slate-600 mb-1">Floor Level</label>
+                <input
+                  type="text"
+                  value={floor}
+                  onChange={(e) => setFloor(e.target.value)}
+                  placeholder="e.g. 5th Floor"
+                  className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 shadow-xs"
+                />
+              </div>
+            </div>
           </div>
 
           {/* Location Area Text */}

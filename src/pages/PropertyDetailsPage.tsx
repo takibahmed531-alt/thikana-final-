@@ -150,13 +150,7 @@ export default function PropertyDetailsPage() {
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [chatMessage, setChatMessage] = useState('');
   const [isSendingMsg, setIsSendingMsg] = useState(false);
-  const [chatHistory, setChatHistory] = useState([
-    {
-      sender: 'landlord',
-      text: 'Assalamu Alaikum! Thanks for viewing my property. Feel free to ask any questions or request a physical viewing schedule.',
-      time: 'Just now',
-    },
-  ]);
+  const [chatHistory, setChatHistory] = useState<any[]>([]);
 
   const [firestoreProperty, setFirestoreProperty] = useState<any>(null);
 
@@ -200,11 +194,11 @@ export default function PropertyDetailsPage() {
               availableSeats: p.availableSeats,
               isVerified: true,
               availableFrom: 'Available Now',
-              floor: 'Upper Floor',
-              bedrooms: 3,
-              bathrooms: 2,
+              floor: p.floor,
+              bedrooms: p.bedrooms,
+              bathrooms: p.bathrooms,
               balconies: 1,
-              areaSqft: 1450,
+              areaSqft: p.areaSqft,
               postedTime: 'Recently posted',
               description: `A newly published rental listing located at ${p.location}. Verified through Thikana real estate portal.`,
               images: imgs,
@@ -931,30 +925,6 @@ export default function PropertyDetailsPage() {
                     </span>
                   </div>
                 </div>
-              ))}
-            </div>
-
-            {/* Quick Prompt Suggestions */}
-            <div className="p-2 border-t border-slate-100 bg-white flex gap-1.5 overflow-x-auto scrollbar-none text-[11px]">
-              {[
-                'Is this flat still available?',
-                'Can I schedule a visit this weekend?',
-                'Is the rent slightly negotiable?',
-              ].map((suggestion, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  disabled={!user}
-                  onClick={() => {
-                    if (!user) return;
-                    setChatMessage(suggestion);
-                  }}
-                  className={`shrink-0 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 transition-colors ${
-                    !user ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-200 cursor-pointer'
-                  }`}
-                >
-                  {suggestion}
-                </button>
               ))}
             </div>
 
