@@ -33,6 +33,8 @@ import { sendEmailVerification } from 'firebase/auth';
 import { auth, db } from '../firebase';
 import { handleFirestoreError, OperationType } from '../services/firestoreErrors';
 import { UserRole } from '../types';
+import { getUserProperties } from '../services/propertyService';
+import PropertyCard from '../components/PropertyCard';
 
 export default function ProfilePage() {
   const {
@@ -53,6 +55,9 @@ export default function ProfilePage() {
   const [nidNumber, setNidNumber] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState('');
   const [hiddenAddress, setHiddenAddress] = useState('');
+
+  const [myProperties, setMyProperties] = useState<any[]>([]);
+  const [loadingProps, setLoadingProps] = useState(false);
 
   const [savingPublic, setSavingPublic] = useState(false);
   const [savingPrivate, setSavingPrivate] = useState(false);
@@ -141,6 +146,70 @@ export default function ProfilePage() {
       setHiddenAddress(privateUser.hiddenAddress || '');
     }
   }, [publicProfile, privateUser, user]);
+
+  useEffect(() => {
+    if (!user) {
+      setMyProperties([]);
+      return;
+    }
+
+    const currentUid = user.uid;
+    let isMounted = true;
+    async function loadMyProperties() {
+      setLoadingProps(true);
+      try {
+        const properties = await getUserProperties(currentUid);
+        if (isMounted) {
+          const formatted = (properties || []).map((p: any) => {
+            let cat = 'Family Flat';
+            const rawCat = (p.category as string || '').toLowerCase();
+            if (rawCat === 'bachelor_sublet' || rawCat === 'bachelor') cat = 'Bachelor';
+            else if (rawCat === 'hostel' || rawCat === 'mess') cat = 'Mess';
+            else if (rawCat === 'commercial') cat = 'Commercial';
+            else if (rawCat === 'sublet') cat = 'Sublet';
+            else if (rawCat === 'apartment' || rawCat === 'family_unit' || rawCat === 'house' || rawCat === 'family flat') cat = 'Family Flat';
+
+            const firstImg =
+              (Array.isArray(p.images) && p.images.length > 0 && p.images[0]) ||
+              (Array.isArray(p.imageUrls) && p.imageUrls.length > 0 && p.imageUrls[0]) ||
+              'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80';
+
+            return {
+              ...p,
+              id: p.propertyId || p.id || '',
+              adId: p.adId,
+              title: p.title || 'Rental Property',
+              rentAmount: Number(p.rentAmount) || 0,
+              location: p.location || '',
+              category: cat,
+              isVerified: p.isVerified ?? true,
+              imageUrl: firstImg,
+              bedrooms: p.bedrooms || 3,
+              bathrooms: p.bathrooms || 2,
+              areaSqft: p.areaSqft || 1200,
+              postedTime: 'Posted by you',
+              genderPreference: p.genderPreference,
+              availableSeats: p.availableSeats,
+              status: p.status || 'available',
+              coordinates: p.coordinates,
+            };
+          });
+          setMyProperties(formatted);
+        }
+      } catch (err) {
+        console.error('Failed to fetch user properties:', err);
+      } finally {
+        if (isMounted) {
+          setLoadingProps(false);
+        }
+      }
+    }
+
+    loadMyProperties();
+    return () => {
+      isMounted = false;
+    };
+  }, [user]);
 
   const handleUpdatePublicProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -719,6 +788,48 @@ export default function ProfilePage() {
                 </button>
               </div>
             </div>
+          </div>
+
+          {/* Section 5: My Posted Properties */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-slate-900 font-bold">
+                <Home className="w-5 h-5 text-emerald-600" />
+                <h3 className="text-base sm:text-lg">My Posted Properties</h3>
+              </div>
+              <Link
+                to="/post-ad"
+                className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 hover:underline"
+              >
+                + Post New Ad
+              </Link>
+            </div>
+            <p className="text-xs text-slate-500">
+              Manage the rental properties and sublet listings you have published on Thikana.
+            </p>
+
+            {loadingProps ? (
+              <div className="py-10 text-center text-sm text-slate-500 flex items-center justify-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin text-emerald-600" />
+                <span>Loading your posted properties...</span>
+              </div>
+            ) : myProperties.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-5 pt-2">
+                {myProperties.map((prop) => (
+                  <PropertyCard key={prop.id} property={prop} />
+                ))}
+              </div>
+            ) : (
+              <div className="py-8 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200 p-6 space-y-2">
+                <p className="text-sm text-slate-500 font-medium">You haven&apos;t posted any properties yet.</p>
+                <Link
+                  to="/post-ad"
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 hover:text-emerald-700"
+                >
+                  Post your first property listing &rarr;
+                </Link>
+              </div>
+            )}
           </div>
         </div>
       )}

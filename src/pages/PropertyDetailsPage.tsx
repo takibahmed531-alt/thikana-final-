@@ -264,18 +264,16 @@ export default function PropertyDetailsPage() {
   }).format(property.depositAmount || property.rentAmount * 2);
 
   const handleDeleteProperty = async () => {
-    const confirmed = window.confirm(
-      'Are you sure you want to delete this listing? This action cannot be undone.'
-    );
+    const confirmed = window.confirm('Are you sure you want to delete this listing?');
     if (!confirmed) return;
-
     setIsDeleting(true);
     try {
       await deletePropertyListing(property.id);
-      navigate('/');
+      alert('Property deleted successfully!');
+      navigate('/profile');
     } catch (err: any) {
-      console.error('Error deleting property listing:', err);
-      alert(err?.message || 'Failed to delete property listing. Please try again.');
+      console.error('Delete Error:', err);
+      alert('Failed to delete: ' + err.message);
     } finally {
       setIsDeleting(false);
     }

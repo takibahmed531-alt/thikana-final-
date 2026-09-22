@@ -420,17 +420,10 @@ export async function getPropertyByAdId(adId: string): Promise<SinglePropertyRes
  * @param propertyId The unique property document ID
  * @returns Promise resolving to true on success
  */
-export async function deletePropertyListing(propertyId: string): Promise<boolean> {
-  try {
-    if (!propertyId || !propertyId.trim()) {
-      throw new Error('Valid Property ID is required.');
-    }
-    await deleteDoc(doc(db, 'properties', propertyId));
-    return true;
-  } catch (error: any) {
-    console.error(`Error deleting property listing ${propertyId}:`, error);
-    throw error;
-  }
+export async function deletePropertyListing(propertyId: string) {
+  if (!propertyId) throw new Error('Property ID is missing');
+  await deleteDoc(doc(db, 'properties', propertyId));
+  return true;
 }
 
 /**
@@ -462,6 +455,44 @@ export async function updatePropertyListing(
     return true;
   } catch (error: any) {
     console.error(`Error updating property ${propertyId}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Fetches all property listings owned by a specific user (landlord).
+ *
+ * @param uid The landlord user ID
+ * @returns Promise resolving to an array of PropertyListing objects
+ */
+export async function getUserProperties(uid: string): Promise<PropertyListing[]> {
+  try {
+    if (!uid || !uid.trim()) {
+      return [];
+    }
+
+    const q = query(
+      collection(db, 'properties'),
+      where('landlordUid', '==', uid.trim())
+    );
+
+    let snapshot;
+    try {
+      snapshot = await getDocs(q);
+    } catch (err) {
+      handleFirestoreError(err, OperationType.LIST, 'properties');
+    }
+
+    const properties: PropertyListing[] = [];
+    if (snapshot && !snapshot.empty) {
+      snapshot.forEach((docSnap) => {
+        properties.push(docSnap.data() as PropertyListing);
+      });
+    }
+
+    return properties;
+  } catch (error: any) {
+    console.error(`Error fetching properties for user ${uid}:`, error);
     throw error;
   }
 }
