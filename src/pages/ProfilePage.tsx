@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { usePreferences } from '../context/PreferencesContext';
+import { useLanguage } from '../context/LanguageContext';
 import { doc, updateDoc } from 'firebase/firestore';
 import { sendEmailVerification } from 'firebase/auth';
 import { auth, db } from '../firebase';
@@ -37,6 +38,7 @@ import { getUserProperties } from '../services/propertyService';
 import PropertyCard from '../components/PropertyCard';
 
 export default function ProfilePage() {
+  const { t } = useLanguage();
   const {
     user,
     publicProfile,
@@ -275,7 +277,7 @@ export default function ProfilePage() {
           <div>
             <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
               <UserIcon className="w-6 h-6 text-emerald-600" />
-              User Profile & Authentication
+              {t('userProfileAuth')}
             </h1>
             <p className="text-sm text-slate-500 mt-1">
               Managed via Firebase Authentication & Cloud Firestore with isolated privacy rules.
@@ -288,7 +290,7 @@ export default function ProfilePage() {
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition-colors cursor-pointer"
             >
               <LogOut className="w-3.5 h-3.5" />
-              Sign Out
+              {t('signOut')}
             </button>
           )}
         </div>
@@ -450,7 +452,7 @@ export default function ProfilePage() {
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
             <div className="flex items-center gap-2 text-slate-900 font-bold">
               <Shield className="w-5 h-5 text-emerald-600" />
-              <h3>Public Profile Information</h3>
+              <h3>{t('publicProfileInfo')}</h3>
             </div>
             <p className="text-xs text-slate-500">
               This info is visible to tenants and landlords on property cards and chat messages.
@@ -512,7 +514,7 @@ export default function ProfilePage() {
                   className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-medium shadow-sm transition-colors cursor-pointer disabled:opacity-60"
                 >
                   <Save className="w-3.5 h-3.5" />
-                  {savingPublic ? 'Saving...' : 'Save Public Profile'}
+                  {savingPublic ? 'Saving...' : t('savePublicProfile')}
                 </button>
               </div>
             </form>
@@ -522,7 +524,7 @@ export default function ProfilePage() {
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
             <div className="flex items-center gap-2 text-slate-900 font-bold">
               <Lock className="w-5 h-5 text-rose-600" />
-              <h3>Private Identity Vault</h3>
+              <h3>{t('privateIdentityVault')}</h3>
             </div>
             <p className="text-xs text-slate-500">
               Protected by Firestore Security Rules (<code className="font-mono">privateUsers</code>
@@ -607,7 +609,7 @@ export default function ProfilePage() {
                   className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-medium shadow-sm transition-colors cursor-pointer disabled:opacity-60"
                 >
                   <Save className="w-3.5 h-3.5" />
-                  {savingPrivate ? 'Securing...' : 'Save Private Vault'}
+                  {savingPrivate ? 'Securing...' : t('savePrivateVault')}
                 </button>
               </div>
             </form>
@@ -703,7 +705,7 @@ export default function ProfilePage() {
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-5">
             <div className="flex items-center gap-2 text-slate-900 font-bold">
               <Settings className="w-5 h-5 text-emerald-600" />
-              <h3>App Settings</h3>
+              <h3>{t('appSettings')}</h3>
             </div>
             <p className="text-xs text-slate-500">
               Manage your interface preferences and live alert settings. Changes are automatically synced with your account.
@@ -795,7 +797,7 @@ export default function ProfilePage() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-slate-900 font-bold">
                 <Home className="w-5 h-5 text-emerald-600" />
-                <h3 className="text-base sm:text-lg">My Posted Properties</h3>
+                <h3 className="text-base sm:text-lg">{t('myPostedProperties')}</h3>
               </div>
               <Link
                 to="/post-ad"

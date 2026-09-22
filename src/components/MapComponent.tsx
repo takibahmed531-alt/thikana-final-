@@ -52,8 +52,12 @@ export default function MapComponent({
   propertyTitle = 'Rental Property',
 }: MapComponentProps) {
   useEffect(() => {
-    // Invalidate map size after rendering to ensure proper tile coverage
-    window.dispatchEvent(new Event('resize'));
+    // Invalidate map size after rendering to allow container DOM to fully render
+    const timer = setTimeout(() => {
+      window.dispatchEvent(new Event('resize'));
+    }, 300);
+
+    return () => clearTimeout(timer);
   }, []);
 
   return (

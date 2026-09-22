@@ -5,7 +5,6 @@ import {
   BadgeCheck,
   Send,
   Paperclip,
-  Image as ImageIcon,
   ArrowLeft,
   MoreVertical,
   Check,
@@ -13,11 +12,9 @@ import {
   ShieldCheck,
   ShieldAlert,
   Building2,
-  Clock,
   ExternalLink,
   Lock,
   Loader2,
-  Radio,
   Flag,
   Star,
   Trash2,
@@ -220,6 +217,7 @@ export default function ChatInterface() {
   const [dummyConversations, setDummyConversations] = useState<Conversation[]>(DUMMY_CONVERSATIONS);
   const [liveMessages, setLiveMessages] = useState<Message[]>([]);
   const [isSending, setIsSending] = useState(false);
+  const [isConversationsLoaded, setIsConversationsLoaded] = useState(false);
 
   const [activeChatId, setActiveChatId] = useState<string>(urlChatId || DUMMY_CONVERSATIONS[0].id);
   const [searchQuery, setSearchQuery] = useState('');
@@ -239,6 +237,7 @@ export default function ChatInterface() {
       setActiveChatId('');
       setLiveConversations([]);
       setDummyConversations([]);
+      setIsConversationsLoaded(false);
       hasInitializedActiveChat.current = false;
     } else {
       setDummyConversations((prev) => (prev.length === 0 ? DUMMY_CONVERSATIONS : prev));
@@ -249,6 +248,7 @@ export default function ChatInterface() {
   useEffect(() => {
     if (!user?.uid) {
       setLiveConversations([]);
+      setIsConversationsLoaded(false);
       return;
     }
 
@@ -256,9 +256,11 @@ export default function ChatInterface() {
       user.uid,
       (convs) => {
         setLiveConversations(convs);
+        setIsConversationsLoaded(true);
       },
       (err) => {
         console.warn('Real-time conversation subscription warning:', err);
+        setIsConversationsLoaded(true);
       }
     );
 
@@ -330,14 +332,22 @@ export default function ChatInterface() {
   // Sync activeChatId when URL search param changes or active chat isn't initialized
   useEffect(() => {
     if (!user) return;
-    if (urlChatId && allConversations.some((c) => c.id === urlChatId)) {
-      setActiveChatId(urlChatId);
-      hasInitializedActiveChat.current = true;
+
+    if (urlChatId) {
+      if (!isConversationsLoaded) return;
+
+      if (allConversations.some((c) => c.id === urlChatId)) {
+        setActiveChatId(urlChatId);
+        hasInitializedActiveChat.current = true;
+      } else if (!hasInitializedActiveChat.current && allConversations.length > 0) {
+        setActiveChatId(allConversations[0]?.id || DUMMY_CONVERSATIONS[0].id);
+        hasInitializedActiveChat.current = true;
+      }
     } else if (!hasInitializedActiveChat.current && allConversations.length > 0) {
       setActiveChatId(allConversations[0].id);
       hasInitializedActiveChat.current = true;
     }
-  }, [urlChatId, allConversations, user]);
+  }, [urlChatId, allConversations, isConversationsLoaded, user]);
 
   // Close options menu if active chat changes
   useEffect(() => {
@@ -681,10 +691,16 @@ export default function ChatInterface() {
           {/* ------------------------------------------------ */}
           <main
             className={`w-full md:w-[68%] lg:w-[70%] flex flex-col bg-slate-50/50 ${
-              activeChatId ? 'flex' : 'hidden md:flex'
+              activeChatId || (urlChatId && !isConversationsLoaded) ? 'flex' : 'hidden md:flex'
             }`}
           >
-            {activeConversation ? (
+            {urlChatId && !isConversationsLoaded ? (
+              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-3">
+                <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
+                <h3 className="font-bold text-slate-800 text-sm">Loading conversation...</h3>
+                <p className="text-xs text-slate-400">Connecting to secure messaging channel</p>
+              </div>
+            ) : activeConversation ? (
               <>
                 {/* ---------------------------------------------------- */}
                 {/* Task 2: Active Chat Sticky Header                    */}

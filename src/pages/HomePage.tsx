@@ -18,6 +18,7 @@ import { getProperties } from '../services/propertyService';
 import { createSearchAlert } from '../services/alertService';
 import { useAuth } from '../context/AuthContext';
 import { PropertyListing } from '../types';
+import { useLanguage } from '../context/LanguageContext';
 
 // Dummy dataset of 8 realistic rental listings in Bangladesh
 const INITIAL_PROPERTIES: PropertyItem[] = [
@@ -195,6 +196,7 @@ function mapListingToPropertyItem(p: PropertyListing): PropertyItem {
 }
 
 export default function HomePage() {
+  const { t } = useLanguage();
   const [searchParams] = useSearchParams();
   const [searchArea, setSearchArea] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -358,12 +360,12 @@ export default function HomePage() {
           {/* Badge */}
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs font-semibold tracking-wide">
             <Sparkles className="w-3.5 h-3.5" />
-            <span>Discover Verified Homes in Bangladesh</span>
+            <span>{t('heroBadge')}</span>
           </div>
 
           {/* Welcoming Title */}
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white leading-tight">
-            Find your next rental home with{' '}
+            {t('heroTitleStart')}{' '}
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-200">
               Thikana
             </span>
@@ -371,7 +373,7 @@ export default function HomePage() {
           </h1>
 
           <p className="text-slate-300 text-sm sm:text-base max-w-2xl leading-relaxed">
-            Search verified family apartments, bachelor pads, and sublets across Dhaka, Chattogram, and Sylhet with total privacy protection.
+            {t('heroSubtitle')}
           </p>
 
           {/* Search Input Field (to search by area) */}
@@ -385,7 +387,7 @@ export default function HomePage() {
                 type="text"
                 value={searchArea}
                 onChange={(e) => setSearchArea(e.target.value)}
-                placeholder="Search by area (e.g., Dhanmondi) or Ad ID (e.g., TK-123456)..."
+                placeholder={t('homeSearchPlaceholder')}
                 className="w-full pl-12 pr-12 py-3.5 sm:py-4 bg-white/95 text-slate-900 placeholder-slate-400 rounded-2xl text-sm sm:text-base font-medium focus:outline-none focus:ring-4 focus:ring-emerald-500/30 transition-all border border-white/20"
               />
 
@@ -407,7 +409,7 @@ export default function HomePage() {
 
             {/* Quick Suggestions Chips */}
             <div className="flex flex-wrap items-center gap-2 mt-3 text-xs text-slate-300">
-              <span className="text-slate-400 font-medium">Popular areas:</span>
+              <span className="text-slate-400 font-medium">{t('popularAreas')}</span>
               {['Dhanmondi', 'Banani', 'Uttara', 'Mirpur', 'Bashundhara'].map((area) => (
                 <button
                   key={area}
@@ -434,7 +436,7 @@ export default function HomePage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <SlidersHorizontal className="w-4 h-4 text-emerald-600" />
-            <h2 className="text-lg sm:text-xl font-bold text-slate-900">Explore by Category</h2>
+            <h2 className="text-lg sm:text-xl font-bold text-slate-900">{t('exploreCategory')}</h2>
           </div>
           <span className="text-xs text-slate-500 font-medium">
             {filteredProperties.length} {filteredProperties.length === 1 ? 'property' : 'properties'} found

@@ -19,6 +19,7 @@ import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-lea
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import {
   createProperty,
   generateShortAdId,
@@ -126,6 +127,7 @@ function MapFlyController({ center }: { center: [number, number] }) {
 }
 
 export default function PostAdPage() {
+  const { t } = useLanguage();
   const { user, signInWithGoogle } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -309,7 +311,7 @@ export default function PostAdPage() {
           Landlord Portal
         </div>
         <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
-          {editId ? 'Edit Property Listing' : 'Post a Property Listing'}
+          {editId ? t('editPropertyListing') : t('postPropertyListing')}
         </h1>
         <p className="text-sm text-slate-500 mt-1">
           {editId
@@ -378,7 +380,7 @@ export default function PostAdPage() {
           {/* Title */}
           <div>
             <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wide mb-1.5">
-              Listing Title *
+              {t('listingTitle')}
             </label>
             <input
               type="text"
@@ -395,7 +397,7 @@ export default function PostAdPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wide mb-1.5">
-                Monthly Rent (BDT) *
+                {t('monthlyRent')}
               </label>
               <input
                 type="number"
@@ -409,7 +411,7 @@ export default function PostAdPage() {
             </div>
             <div>
               <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wide mb-1.5">
-                Accommodation Category *
+                {t('accommodationCategory')}
               </label>
               <select
                 value={category}
@@ -624,7 +626,7 @@ export default function PostAdPage() {
                   }}
                   className="px-5 py-2.5 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 text-sm font-bold transition-colors cursor-pointer"
                 >
-                  Cancel
+                  {t('cancel')}
                 </button>
               )}
               <button
@@ -638,8 +640,8 @@ export default function PostAdPage() {
                     ? 'Updating...'
                     : 'Publishing...'
                   : editId
-                  ? 'Update Property'
-                  : 'Publish to Thikana'}
+                  ? t('updateProperty')
+                  : t('publishToThikana')}
               </button>
             </div>
           </div>

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { getPropertyById, deletePropertyListing } from '../services/propertyService';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import {
   MapPin,
   BadgeCheck,
@@ -136,6 +137,7 @@ const PROPERTY_DETAILS_DATA: Record<string, any> = {
 };
 
 export default function PropertyDetailsPage() {
+  const { t } = useLanguage();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user, openAuthModal } = useAuth();
@@ -304,11 +306,11 @@ export default function PropertyDetailsPage() {
           className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-sm font-medium transition-colors shadow-sm"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Back to Listings</span>
+          <span>{t('backToListings')}</span>
         </Link>
 
         <div className="flex items-center gap-2">
-          {user?.uid === property.landlordUid && (
+          {user?.uid && property?.landlordUid && user.uid === property.landlordUid && (
             <>
               <Link
                 to={`/post-ad?edit=${property.id}`}
@@ -316,7 +318,7 @@ export default function PropertyDetailsPage() {
                 title="Edit this listing"
               >
                 <Edit className="w-4 h-4" />
-                <span className="hidden sm:inline">Edit Ad</span>
+                <span className="hidden sm:inline">{t('editAd')}</span>
               </Link>
 
               <button
@@ -327,7 +329,7 @@ export default function PropertyDetailsPage() {
                 title="Delete this listing"
               >
                 <Trash2 className="w-4 h-4" />
-                <span className="hidden sm:inline">{isDeleting ? 'Deleting...' : 'Delete Ad'}</span>
+                <span className="hidden sm:inline">{isDeleting ? 'Deleting...' : t('deleteAd')}</span>
               </button>
             </>
           )}
@@ -342,7 +344,7 @@ export default function PropertyDetailsPage() {
             }`}
           >
             <Bookmark className={`w-4 h-4 ${isSaved ? 'fill-emerald-600 stroke-emerald-600' : ''}`} />
-            <span>{isSaved ? 'Saved' : 'Save'}</span>
+            <span>{isSaved ? t('saved') : t('save')}</span>
           </button>
 
           <button
@@ -357,7 +359,7 @@ export default function PropertyDetailsPage() {
             className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-sm font-medium transition-colors shadow-sm"
           >
             <Share2 className="w-4 h-4" />
-            <span className="hidden sm:inline">Share</span>
+            <span className="hidden sm:inline">{t('share')}</span>
           </button>
 
           <button
@@ -367,7 +369,7 @@ export default function PropertyDetailsPage() {
             title="Report this listing for fraud or violations"
           >
             <Flag className="w-4 h-4" />
-            <span className="hidden sm:inline">Report Ad</span>
+            <span className="hidden sm:inline">{t('reportAd')}</span>
           </button>
         </div>
       </div>
@@ -644,7 +646,7 @@ export default function PropertyDetailsPage() {
 
           {/* Detailed Property Description */}
           <div className="space-y-3">
-            <h2 className="text-lg font-bold text-slate-900">About this Property</h2>
+            <h2 className="text-lg font-bold text-slate-900">{t('aboutProperty')}</h2>
             <div className="text-slate-600 text-sm leading-relaxed whitespace-pre-line bg-white p-5 rounded-2xl border border-slate-200">
               {property.description}
             </div>
@@ -652,7 +654,7 @@ export default function PropertyDetailsPage() {
 
           {/* List of Amenities */}
           <div className="space-y-4">
-            <h2 className="text-lg font-bold text-slate-900">Amenities & Facilities</h2>
+            <h2 className="text-lg font-bold text-slate-900">{t('amenitiesFacilities')}</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {property.amenities.map((amenity: any, idx: number) => {
                 const Icon = amenity.icon;
@@ -677,7 +679,7 @@ export default function PropertyDetailsPage() {
           <div className="space-y-3 pt-2">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-bold text-slate-900">Location & Neighborhood</h2>
+                <h2 className="text-lg font-bold text-slate-900">{t('locationNeighborhood')}</h2>
                 <p className="text-xs text-slate-500">Precise location pin with interactive map navigation</p>
               </div>
               <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
@@ -723,7 +725,7 @@ export default function PropertyDetailsPage() {
 
             <div className="space-y-2 text-xs text-slate-600">
               <div className="flex justify-between py-1">
-                <span className="text-slate-500">Security Advance:</span>
+                <span className="text-slate-500">{t('securityAdvance')}:</span>
                 <span className="font-semibold text-slate-800">৳{formattedDeposit}</span>
               </div>
               <div className="flex justify-between py-1">
@@ -731,7 +733,7 @@ export default function PropertyDetailsPage() {
                 <span className="font-semibold text-slate-800">Included</span>
               </div>
               <div className="flex justify-between py-1">
-                <span className="text-slate-500">Minimum Lease:</span>
+                <span className="text-slate-500">{t('minimumLease')}:</span>
                 <span className="font-semibold text-slate-800">6 Months</span>
               </div>
             </div>
@@ -799,14 +801,14 @@ export default function PropertyDetailsPage() {
                   className="w-full flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-lg shadow-emerald-600/20 active:scale-[0.99] transition-all cursor-pointer"
                 >
                   <MessageCircle className="w-5 h-5" />
-                  <span>Quick Chat with Landlord</span>
+                  <span>{t('quickChat')}</span>
                 </button>
 
                 <Link
                   to={`/messages?chatId=${effectiveChatId}`}
                   className="w-full flex items-center justify-center gap-2 px-6 py-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition-colors"
                 >
-                  <span>Open Full Messenger</span>
+                  <span>{t('openFullMessenger')}</span>
                   <ExternalLink className="w-3.5 h-3.5 text-slate-500" />
                 </Link>
 
@@ -816,7 +818,7 @@ export default function PropertyDetailsPage() {
                   className="w-full flex items-center justify-center gap-1.5 py-1.5 text-xs text-slate-500 hover:text-rose-600 transition-colors cursor-pointer"
                 >
                   <Flag className="w-3.5 h-3.5" />
-                  <span>Report Ad</span>
+                  <span>{t('reportAd')}</span>
                 </button>
               </div>
             ) : (
