@@ -9,12 +9,9 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // Port configuration:
-// - In AI Studio development sandbox (CONTROL_PLANE_PORT is set): Nginx runs on 8080 and proxies to port 3000,
-//   so the dev server MUST listen on port 3000.
-// - In deployed Cloud Run production: Cloud Run routes external traffic directly to process.env.PORT (typically 8080)
-//   and executes deployment health checks against process.env.PORT.
-const isDevSandbox = Boolean(process.env.CONTROL_PLANE_PORT);
-const PORT = isDevSandbox ? 3000 : (Number(process.env.PORT) || 8080);
+// - Dev sandbox defaults to 3000
+// - Cloud Run production provides PORT via process.env.PORT
+const PORT = Number(process.env.PORT) || 3000;
 
 // Reusable Gemini Client
 let genAIClient: GoogleGenAI | null = null;
@@ -291,14 +288,7 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    let distPath = path.join(process.cwd(), 'dist');
-    if (!fs.existsSync(path.join(distPath, 'index.html'))) {
-      if (fs.existsSync(path.join(__dirname, 'index.html'))) {
-        distPath = __dirname;
-      } else if (fs.existsSync(path.join(__dirname, '..', 'dist', 'index.html'))) {
-        distPath = path.join(__dirname, '..', 'dist');
-      }
-    }
+    const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
     app.all('/api/*', (_req, res) => {
       res.status(404).json({ error: 'Endpoint not found' });
@@ -314,23 +304,8 @@ async function startServer() {
   }
 
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running on port ${PORT} (devSandbox: ${isDevSandbox})`);
+    console.log(`Server running on port ${PORT} (isProduction: ${isProduction})`);
   });
-
-  // If running in deployed production on a port other than 3000 (e.g. 8080 on Cloud Run),
-  // also listen on 3000 as a secondary listener if available
-  if (!isDevSandbox && PORT !== 3000) {
-    try {
-      const secondaryServer = app.listen(3000, '0.0.0.0', () => {
-        console.log('Secondary listener active on port 3000');
-      });
-      secondaryServer.on('error', (err: any) => {
-        console.info('Secondary port 3000 note:', err?.code || err?.message);
-      });
-    } catch (err: any) {
-      console.info('Secondary listener error ignored:', err?.message);
-    }
-  }
 }
 
 startServer();

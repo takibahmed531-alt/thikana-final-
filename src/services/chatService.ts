@@ -135,13 +135,7 @@ export async function startConversation(
     const conversationsRef = collection(db, 'conversations');
 
     // Check if an active conversation already exists between these two users for this property
-    const existingQuery = query(
-      conversationsRef,
-      where('propertyId', '==', propertyId),
-      where('landlordUid', '==', landlordUid),
-      where('tenantUid', '==', tenantUid),
-      limit(1)
-    );
+    const existingQuery = query(conversationsRef, where('participants', 'array-contains', tenantUid), where('propertyId', '==', propertyId), where('landlordUid', '==', landlordUid), limit(1));
 
     let querySnapshot;
     try {

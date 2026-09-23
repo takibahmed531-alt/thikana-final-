@@ -253,6 +253,8 @@ export default function PostAdPage() {
     setErrorMsg(null);
     setSuccessMsg(null);
 
+    const validExistingImages = imagePreviews.filter(url => !url.startsWith('blob:'));
+
     try {
       // Parse availableSeats only when category is bachelor_sublet or hostel
       const isSharedCategory = category === 'bachelor_sublet' || category === 'hostel';
@@ -288,7 +290,7 @@ export default function PostAdPage() {
           ...(parsedAreaSqft !== undefined && !isNaN(parsedAreaSqft) && parsedAreaSqft > 0 ? { areaSqft: parsedAreaSqft } : {}),
           ...(parsedFloor !== undefined ? { floor: parsedFloor } : {}),
           coordinates,
-          images: imagePreviews,
+          images: validExistingImages,
         };
 
         await updatePropertyListing(editId, updatedData, imageFiles);
@@ -305,7 +307,7 @@ export default function PostAdPage() {
             category,
             location: location.trim(),
             amenities: selectedAmenities,
-            images: imagePreviews,
+            images: validExistingImages,
             genderPreference,
             occupationPreference,
             ...(parsedMinAge !== undefined && !isNaN(parsedMinAge) && parsedMinAge > 0 ? { minAge: parsedMinAge } : {}),
