@@ -47,21 +47,19 @@ export async function uploadChatImage(file: File): Promise<string> {
 
     // Compress the image using browser-image-compression
     const options = {
-      maxSizeMB: 0.2,
-      maxWidthOrHeight: 1024,
+      maxSizeMB: 0.5,
+      maxWidthOrHeight: 1080,
       useWebWorker: true,
     };
 
     const compressedFile = await imageCompression(file, options);
 
-    // Upload the compressed file to Firebase Storage under chatImages/{timestamp}_{filename}
-    const timestamp = Date.now();
-    const sanitizedFilename = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-    const storagePath = `chatImages/${timestamp}_${sanitizedFilename}`;
-    const storageRef = ref(storage, storagePath);
+    const storagePath = `chatImages/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
+    const imageRef = ref(storage, storagePath);
 
-    const snapshot = await uploadBytes(storageRef, compressedFile);
-    const downloadURL = await getDownloadURL(snapshot.ref);
+    const metadata = { contentType: file.type || 'image/jpeg' };
+    await uploadBytes(imageRef, compressedFile, metadata);
+    const downloadURL = await getDownloadURL(imageRef);
 
     return downloadURL;
   } catch (error) {
