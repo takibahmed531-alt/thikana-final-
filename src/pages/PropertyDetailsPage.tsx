@@ -42,102 +42,6 @@ import MapComponent from '../components/MapComponent';
 import NeighborhoodGuide from '../components/NeighborhoodGuide';
 import ReportModal from '../components/ReportModal';
 
-// Detailed property dictionary with realistic Dhaka / Chattogram coordinates
-const PROPERTY_DETAILS_DATA: Record<string, any> = {
-  'prop-1': {
-    id: 'prop-1',
-    adId: 'TK-123456',
-    title: 'Modern 3-BHK Family Flat with Rooftop Garden',
-    rentAmount: 36000,
-    depositAmount: 72000,
-    location: 'Road 9A, Dhanmondi, Dhaka',
-    coordinates: [23.7465, 90.376] as [number, number],
-    category: 'Family Flat',
-    status: 'available',
-    genderPreference: 'Any',
-    isVerified: true,
-    availableFrom: '1st of Next Month',
-    floor: '5th Floor (South Facing)',
-    bedrooms: 3,
-    bathrooms: 3,
-    balconies: 2,
-    areaSqft: 1650,
-    postedTime: '2 hrs ago',
-    description: `A thoughtfully designed 3-bedroom, 3-bathroom family apartment situated in the serene residential pocket of Road 9A, Dhanmondi. 
-    
-    This south-facing unit boasts ample natural cross-ventilation, expansive balconies overlooking tree-lined streets, and direct elevator access to a shared rooftop garden. Ideal for corporate executives and families looking for tranquility with immediate proximity to top schools, healthcare facilities, and Dhanmondi Lake.`,
-    images: [
-      'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=1200&q=80',
-      'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80',
-    ],
-    amenities: [
-      { name: 'High-Speed WiFi Ready', icon: Wifi, available: true },
-      { name: '24/7 Generator Backup', icon: Zap, available: true },
-      { name: 'Government Gas Line', icon: Flame, available: true },
-      { name: '24/7 CCTV & Security Guard', icon: Shield, available: true },
-      { name: 'Dedicated Car Parking', icon: Car, available: true },
-      { name: 'Dual Passenger Lift', icon: Building, available: true },
-      { name: 'Continuous WASA Water', icon: Droplets, available: true },
-      { name: 'Community Rooftop', icon: Layers, available: true },
-    ],
-    landlord: {
-      name: 'Engr. Tariqul Islam',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
-      isVerified: true,
-      memberSince: 'March 2023',
-      responseRate: '98% Response Rate',
-      responseTime: 'Replies within 30 mins',
-      totalListings: 2,
-    },
-  },
-  'prop-2': {
-    id: 'prop-2',
-    adId: 'THK-BAN02',
-    title: 'Furnished Bachelor Studio with High-Speed WiFi',
-    rentAmount: 16500,
-    depositAmount: 16500,
-    location: 'Block C, Banani, Dhaka',
-    coordinates: [23.7937, 90.4043] as [number, number],
-    category: 'Bachelor',
-    status: 'available',
-    genderPreference: 'Male',
-    availableSeats: 1,
-    isVerified: true,
-    availableFrom: 'Immediate',
-    floor: '3rd Floor',
-    bedrooms: 1,
-    bathrooms: 1,
-    balconies: 1,
-    areaSqft: 520,
-    postedTime: '5 hrs ago',
-    description: `Modern furnished bachelor studio designed for university students and tech professionals. Features dedicated high-speed optical fiber internet, workstation desk, attached washroom with geyser, and daily meal facilities optional.`,
-    images: [
-      'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=1200&q=80',
-      'https://images.unsplash.com/photo-1598928506311-c55ded91a20c?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1595526114035-0d45ed16cfbf?auto=format&fit=crop&w=800&q=80',
-    ],
-    amenities: [
-      { name: 'Dedicated High-Speed WiFi', icon: Wifi, available: true },
-      { name: 'Full Power Backup', icon: Zap, available: true },
-      { name: 'CCTV Guarded Entrance', icon: Shield, available: true },
-      { name: 'WASA Water with Filter', icon: Droplets, available: true },
-      { name: 'Elevator Access', icon: Building, available: true },
-      { name: 'Weekly Housekeeping', icon: CheckCircle, available: true },
-    ],
-    landlord: {
-      name: 'Tanvir Hossain',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80',
-      isVerified: true,
-      memberSince: 'January 2024',
-      responseRate: '95% Response Rate',
-      responseTime: 'Replies within an hour',
-      totalListings: 3,
-    },
-  },
-};
-
 export default function PropertyDetailsPage() {
   const { t } = useLanguage();
   const { id } = useParams<{ id: string }>();
@@ -155,7 +59,7 @@ export default function PropertyDetailsPage() {
   const [firestoreProperty, setFirestoreProperty] = useState<any>(null);
 
   useEffect(() => {
-    if (id && !PROPERTY_DETAILS_DATA[id]) {
+    if (id) {
       getPropertyById(id)
         .then((res) => {
           if (res.success && res.property) {
@@ -194,11 +98,11 @@ export default function PropertyDetailsPage() {
               availableSeats: p.availableSeats,
               isVerified: true,
               availableFrom: 'Available Now',
-              floor: p.floor,
-              bedrooms: p.bedrooms,
-              bathrooms: p.bathrooms,
+              floor: 'Upper Floor',
+              bedrooms: 3,
+              bathrooms: 2,
               balconies: 1,
-              areaSqft: p.areaSqft,
+              areaSqft: 1450,
               postedTime: 'Recently posted',
               description: `A newly published rental listing located at ${p.location}. Verified through Thikana real estate portal.`,
               images: imgs,
@@ -227,8 +131,7 @@ export default function PropertyDetailsPage() {
     }
   }, [id]);
 
-  // Fallback to prop-1 if ID is not recognized
-  const property = firestoreProperty || (id && PROPERTY_DETAILS_DATA[id]) || PROPERTY_DETAILS_DATA['prop-1'];
+  const property = firestoreProperty;
 
   const [copiedAdId, setCopiedAdId] = useState(false);
 
@@ -253,11 +156,11 @@ export default function PropertyDetailsPage() {
 
   const formattedRent = new Intl.NumberFormat('en-BD', {
     maximumFractionDigits: 0,
-  }).format(property.rentAmount);
+  }).format(property?.rentAmount || 0);
 
   const formattedDeposit = new Intl.NumberFormat('en-BD', {
     maximumFractionDigits: 0,
-  }).format(property.depositAmount || property.rentAmount * 2);
+  }).format(property?.depositAmount || (property?.rentAmount || 0) * 2);
 
   const handleDeleteProperty = async () => {
     const confirmed = window.confirm('Are you sure you want to delete this listing?');
@@ -318,6 +221,8 @@ export default function PropertyDetailsPage() {
       setIsSendingMsg(false);
     }
   };
+
+  if (!property) return <div className="flex h-screen items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-emerald-600"/></div>;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8">

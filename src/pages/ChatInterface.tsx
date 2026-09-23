@@ -68,8 +68,6 @@ interface Conversation {
   starredBy?: string[];
 }
 
-const DUMMY_CONVERSATIONS: Conversation[] = [];
-
 export default function ChatInterface() {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -78,7 +76,6 @@ export default function ChatInterface() {
   const landlordUid = searchParams.get('landlordUid');
 
   const [liveConversations, setLiveConversations] = useState<LiveConversation[]>([]);
-  const [dummyConversations, setDummyConversations] = useState<Conversation[]>(DUMMY_CONVERSATIONS);
   const [partnerProfiles, setPartnerProfiles] = useState<Record<string, { name: string; avatar: string }>>({});
   const [draftConversation, setDraftConversation] = useState<Conversation | null>(null);
   const [draftPropertyRaw, setDraftPropertyRaw] = useState<any>(null);
@@ -86,7 +83,7 @@ export default function ChatInterface() {
   const [isSending, setIsSending] = useState(false);
   const [isConversationsLoaded, setIsConversationsLoaded] = useState(false);
 
-  const [activeChatId, setActiveChatId] = useState<string>(urlChatId || DUMMY_CONVERSATIONS[0]?.id || '');
+  const [activeChatId, setActiveChatId] = useState<string>(urlChatId || '');
   const [searchQuery, setSearchQuery] = useState('');
   const [inputText, setInputText] = useState('');
   const [attachedImage, setAttachedImage] = useState<string | null>(null);
@@ -98,12 +95,11 @@ export default function ChatInterface() {
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Listen to user state: if !user (user logs out), immediately clear activeChatId, liveConversations, and dummyConversations
+  // Listen to user state: if !user (user logs out), immediately clear activeChatId and liveConversations
   useEffect(() => {
     if (!user) {
       setActiveChatId('');
       setLiveConversations([]);
-      setDummyConversations([]);
       setDraftConversation(null);
       setPartnerProfiles({});
       setIsConversationsLoaded(false);
@@ -309,9 +305,9 @@ export default function ChatInterface() {
     });
   }, [liveConversations, user?.uid, partnerProfiles]);
 
-  // Combine live conversations first, followed by dummyConversations: filter deletedBy and sort starredBy to top
+  // Combine live conversations and active draft conversation: filter deletedBy and sort starredBy to top
   const allConversations: Conversation[] = useMemo(() => {
-    let combined = [...mappedLiveConversations, ...dummyConversations];
+    let combined = [...mappedLiveConversations];
 
     // Prepend active draft conversation if not already represented in live conversations
     if (
@@ -333,7 +329,7 @@ export default function ChatInterface() {
       const bStarred = b.starredBy?.includes(user.uid) ? 1 : 0;
       return bStarred - aStarred;
     });
-  }, [mappedLiveConversations, dummyConversations, draftConversation, user?.uid]);
+  }, [mappedLiveConversations, draftConversation, user?.uid]);
 
   // Sync activeChatId when URL search param changes or active chat isn't initialized
   useEffect(() => {
@@ -381,22 +377,6 @@ export default function ChatInterface() {
       } catch (err) {
         console.error('Error toggling star on conversation:', err);
       }
-    } else {
-      setDummyConversations((prev) =>
-        prev.map((c) => {
-          if (c.id === targetId) {
-            const starred = c.starredBy || [];
-            const isStarred = starred.includes(user.uid);
-            return {
-              ...c,
-              starredBy: isStarred
-                ? starred.filter((u) => u !== user.uid)
-                : [...starred, user.uid],
-            };
-          }
-          return c;
-        })
-      );
     }
   };
 
@@ -413,18 +393,6 @@ export default function ChatInterface() {
       } catch (err) {
         console.error('Error soft-deleting conversation:', err);
       }
-    } else {
-      setDummyConversations((prev) =>
-        prev.map((c) => {
-          if (c.id === targetId) {
-            return {
-              ...c,
-              deletedBy: [...(c.deletedBy || []), user.uid],
-            };
-          }
-          return c;
-        })
-      );
     }
   };
 
@@ -467,7 +435,7 @@ export default function ChatInterface() {
     };
   }, [activeChatId, isLiveChat, user?.uid]);
 
-  // The active message feed to display: live messages if live chat, else local dummy messages
+  // The active message feed to display: live messages if live chat, else local messages
   const displayedMessages: Message[] = isLiveChat
     ? liveMessages
     : (activeConversation?.messages || []);
@@ -488,10 +456,6 @@ export default function ChatInterface() {
   const handleSelectConversation = (id: string) => {
     setActiveChatId(id);
     setSearchParams({ chatId: id });
-    // Mark dummy conversation as read if applicable
-    setDummyConversations((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, unreadCount: 0 } : c))
-    );
   };
 
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -552,30 +516,6 @@ export default function ChatInterface() {
       } finally {
         setIsSending(false);
       }
-    } else {
-      // Dummy conversation: append to local dummy state
-      const newMsg: Message = {
-        id: `m_${Date.now()}`,
-        sender: 'me',
-        text: textToSend,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        imageUrl: imageToSend || undefined,
-        status: 'sent',
-      };
-
-      setDummyConversations((prev) =>
-        prev.map((c) => {
-          if (c.id === activeChatId) {
-            return {
-              ...c,
-              lastMessage: newMsg.text || 'Sent an image attachment',
-              lastMessageTime: newMsg.timestamp,
-              messages: [...c.messages, newMsg],
-            };
-          }
-          return c;
-        })
-      );
     }
   };
 
