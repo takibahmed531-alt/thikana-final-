@@ -169,7 +169,7 @@ export default function SavedPage() {
               </div>
               <h2 className="text-xl font-bold">Instant Property Match Alerts</h2>
               <p className="text-xs sm:text-sm text-emerald-100/90 leading-relaxed">
-                Whenever landlords post properties matching your favorite neighborhoods, categories, or rent budget, Thikana immediately sends an automated email alert to your inbox.
+                Whenever landlords post properties matching your favorite neighborhoods, categories, or rent budget, Bhara Hobe immediately sends an automated email alert to your inbox.
               </p>
             </div>
 
@@ -423,7 +423,7 @@ export default function SavedPage() {
           <div className="max-w-md mx-auto space-y-1">
             <h2 className="text-base font-semibold text-slate-800">No saved properties yet</h2>
             <p className="text-xs text-slate-500">
-              Browse through listings on Thikana and click the bookmark icon to keep track of your favorite apartments.
+              Browse through listings on Bhara Hobe and click the bookmark icon to keep track of your favorite apartments.
             </p>
           </div>
           <div className="pt-2">

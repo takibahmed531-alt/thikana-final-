@@ -8,6 +8,8 @@ import {
   ref,
   uploadBytes,
   getDownloadURL,
+  deleteObject,
+  getStorage,
 } from 'firebase/storage';
 import {
   collection,
@@ -15,6 +17,7 @@ import {
   setDoc,
   getDocs,
   getDoc,
+  deleteDoc,
   query,
   where,
   orderBy,
@@ -26,8 +29,9 @@ import {
   arrayUnion,
   arrayRemove,
 } from 'firebase/firestore';
-import { db, storage } from '../firebase';
+import { auth, db, storage } from '../firebase';
 import { handleFirestoreError, OperationType } from './firestoreErrors';
+import { updateUserLastActive } from './authService';
 
 // ----------------------------------------------------------------------
 // Image Compression & Chat Image Upload
@@ -135,38 +139,55 @@ export async function startConversation(
     const conversationsRef = collection(db, 'conversations');
 
     // Check if an active conversation already exists between these two users for this property
-    const existingQuery = query(conversationsRef, where('participants', 'array-contains', tenantUid), where('propertyId', '==', propertyId), where('landlordUid', '==', landlordUid), limit(1));
+    // Query by current user's participation to comply with security rules and avoid composite index requirement
+    const callerUid = auth.currentUser?.uid || tenantUid;
+    const existingQuery = query(
+      conversationsRef,
+      where('participants', 'array-contains', callerUid)
+    );
 
     let querySnapshot;
     try {
       querySnapshot = await getDocs(existingQuery);
     } catch (err) {
-      handleFirestoreError(err, OperationType.GET, 'conversations');
+      console.warn('Existing conversation lookup warning:', err);
     }
 
     if (querySnapshot && !querySnapshot.empty) {
-      const existingDoc = querySnapshot.docs[0];
-      const data = existingDoc.data() as Conversation;
-      return {
-        conversationId: existingDoc.id,
-        conversation: {
-          id: existingDoc.id,
-          ...data,
-        },
-        isNew: false,
-      };
+      const matchDoc = querySnapshot.docs.find((d) => {
+        const data = d.data() as Conversation;
+        const participants = data.participants || [];
+        const isSameProp = data.propertyId === propertyId;
+        const hasBoth =
+          (participants.includes(tenantUid) && participants.includes(landlordUid)) ||
+          (data.tenantUid === tenantUid && data.landlordUid === landlordUid);
+        return isSameProp && hasBoth;
+      });
+
+      if (matchDoc) {
+        const data = matchDoc.data() as Conversation;
+        return {
+          conversationId: matchDoc.id,
+          conversation: {
+            id: matchDoc.id,
+            ...data,
+          },
+          isNew: false,
+        };
+      }
     }
 
     // No existing conversation found; generate a new unique conversation document
     const newDocRef = doc(conversationsRef);
     const conversationId = newDocRef.id;
+    const participantsList = Array.from(new Set([tenantUid, landlordUid]));
 
     const newConversation: Conversation = {
       conversationId,
       propertyId,
       landlordUid,
       tenantUid,
-      participants: [tenantUid, landlordUid],
+      participants: participantsList,
       propertyDetails: propertyDetails || {},
       lastMessage: '',
       lastMessageSenderUid: '',
@@ -229,11 +250,12 @@ export async function startConversationAndSendMessage(
 
     // 2. Ensure the parent conversation document has explicit landlordUid, tenantUid, participants, and updatedAt
     const parentRef = doc(db, 'conversations', conversationId);
+    const participantsList = Array.from(new Set([tenantUid, landlordUid]));
     try {
       await updateDoc(parentRef, {
         landlordUid,
         tenantUid,
-        participants: [tenantUid, landlordUid],
+        participants: participantsList,
         updatedAt: serverTimestamp(),
       });
     } catch (updateErr) {
@@ -253,7 +275,7 @@ export async function startConversationAndSendMessage(
         ...conversation,
         landlordUid,
         tenantUid,
-        participants: [tenantUid, landlordUid],
+        participants: participantsList,
       },
       message: sentMsg,
       isNew,
@@ -329,6 +351,9 @@ export async function sendMessage(
       console.warn('Warning updating conversation metadata after message send:', err);
     }
 
+    // Event-driven presence: update lastActive when user sends a message
+    updateUserLastActive(senderUid).catch(() => {});
+
     return {
       id: messageId,
       ...messageData,
@@ -384,9 +409,8 @@ export function subscribeToUserConversations(
       console.error(`Error subscribing to user conversations (${userUid}):`, error);
       if (onError) {
         onError(error);
-      } else {
-        handleFirestoreError(error, OperationType.LIST, 'conversations');
       }
+      callback([]);
     }
   );
 }
@@ -425,9 +449,8 @@ export function subscribeToMessages(
       console.error(`Error subscribing to messages (${conversationId}):`, error);
       if (onError) {
         onError(error);
-      } else {
-        handleFirestoreError(error, OperationType.LIST, `conversations/${conversationId}/messages`);
       }
+      callback([]);
     }
   );
 }
@@ -506,3 +529,69 @@ export async function toggleStarConversation(
     };
   }
 }
+
+/**
+ * Deletes an individual chat message document from Firestore and strictly
+ * deletes its associated image from Firebase Storage if present to prevent orphaned files.
+ *
+ * @param conversationId The ID of the conversation parent document
+ * @param messageId The ID of the message document
+ * @param imageUrl Optional direct image URL of the message (if omitted, doc is inspected)
+ * @returns Promise resolving to operation status
+ */
+export async function deleteMessage(
+  conversationId: string,
+  messageId: string,
+  imageUrl?: string | null
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    if (!conversationId || !messageId) {
+      throw new Error('conversationId and messageId are required to delete a message.');
+    }
+
+    let targetImageUrl = imageUrl;
+
+    // If imageUrl wasn't provided, inspect Firestore document to extract any imageUrl
+    if (!targetImageUrl) {
+      try {
+        const msgDocRef = doc(db, 'conversations', conversationId, 'messages', messageId);
+        const msgSnap = await getDoc(msgDocRef);
+        if (msgSnap.exists()) {
+          const data = msgSnap.data() as ChatMessage;
+          targetImageUrl = data.imageUrl || null;
+        }
+      } catch (inspectErr) {
+        console.warn(`Could not inspect message document (${messageId}) for image URL:`, inspectErr);
+      }
+    }
+
+    // Step 1: Strict storage deletion if an attached image exists
+    if (targetImageUrl && typeof targetImageUrl === 'string') {
+      try {
+        if (
+          targetImageUrl.includes('firebasestorage.googleapis.com') ||
+          targetImageUrl.startsWith('gs://') ||
+          targetImageUrl.startsWith('chatImages/')
+        ) {
+          const storageInstance = storage || getStorage();
+          const imageRef = ref(storageInstance, targetImageUrl);
+          await deleteObject(imageRef);
+        }
+      } catch (storageErr) {
+        // Log warning and proceed so Firestore document is still deleted even if image is missing
+        console.warn(`Could not delete message image from storage (${targetImageUrl}):`, storageErr);
+      }
+    }
+
+    // Step 2: Delete message document from Firestore
+    const msgDocRef = doc(db, 'conversations', conversationId, 'messages', messageId);
+    await deleteDoc(msgDocRef);
+
+    return { success: true };
+  } catch (err: any) {
+    console.error(`Error deleting message ${messageId} in conversation ${conversationId}:`, err);
+    handleFirestoreError(err, OperationType.DELETE, `conversations/${conversationId}/messages/${messageId}`);
+    return { success: false, error: err?.message || 'Failed to delete message.' };
+  }
+}
+

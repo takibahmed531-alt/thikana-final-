@@ -36,6 +36,7 @@ import { handleFirestoreError, OperationType } from '../services/firestoreErrors
 import { UserRole } from '../types';
 import { getUserProperties } from '../services/propertyService';
 import PropertyCard from '../components/PropertyCard';
+import { formatTimeAgo } from '../utils/timeUtils';
 
 export default function ProfilePage() {
   const { t } = useLanguage();
@@ -78,7 +79,7 @@ export default function ProfilePage() {
   );
 
   const isEmailUnverified = Boolean(
-    user && !user.emailVerified && user.email && !user.email.endsWith('@thikana.app')
+    user && !user.emailVerified && user.email && !user.email.endsWith('@bharahobe.app') && !user.email.endsWith('@thikana.app')
   );
 
   const handleResendVerification = async () => {
@@ -174,7 +175,7 @@ export default function ProfilePage() {
             const firstImg =
               (Array.isArray(p.images) && p.images.length > 0 && p.images[0]) ||
               (Array.isArray(p.imageUrls) && p.imageUrls.length > 0 && p.imageUrls[0]) ||
-              'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80';
+              '';
 
             return {
               ...p,
@@ -189,7 +190,7 @@ export default function ProfilePage() {
               bedrooms: p.bedrooms || 3,
               bathrooms: p.bathrooms || 2,
               areaSqft: p.areaSqft || 1200,
-              postedTime: 'Posted by you',
+              postedTime: p.createdAt ? formatTimeAgo(p.createdAt) : 'Recently posted',
               genderPreference: p.genderPreference,
               availableSeats: p.availableSeats,
               status: p.status || 'available',
@@ -222,7 +223,7 @@ export default function ProfilePage() {
     try {
       const pubRef = doc(db, 'publicProfiles', user.uid);
       await updateDoc(pubRef, {
-        displayName: displayName.trim() || 'Thikana User',
+        displayName: displayName.trim() || 'Bhara Hobe User',
         role,
         isVerified: publicProfile?.isVerified ?? false,
       });
@@ -303,7 +304,7 @@ export default function ProfilePage() {
             <UserIcon className="w-8 h-8" />
           </div>
           <div className="max-w-md mx-auto space-y-2">
-            <h2 className="text-xl font-bold text-slate-900">Sign in to Thikana</h2>
+            <h2 className="text-xl font-bold text-slate-900">Sign in to Bhara Hobe</h2>
             <p className="text-sm text-slate-500">
               Sign in with your email, phone number, or social account to post verified rental listings, connect with
               landlords, and save favourite apartments.
@@ -419,7 +420,7 @@ export default function ProfilePage() {
               <div>
                 <div className="flex items-center gap-2">
                   <h2 className="text-lg font-bold text-slate-900">
-                    {publicProfile?.displayName || user.displayName || 'Thikana User'}
+                    {publicProfile?.displayName || user.displayName || 'Bhara Hobe User'}
                   </h2>
                   {publicProfile?.isVerified && (
                     <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800">
@@ -807,7 +808,7 @@ export default function ProfilePage() {
               </Link>
             </div>
             <p className="text-xs text-slate-500">
-              Manage the rental properties and sublet listings you have published on Thikana.
+              Manage the rental properties and sublet listings you have published on Bhara Hobe.
             </p>
 
             {loadingProps ? (

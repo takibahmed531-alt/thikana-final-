@@ -74,7 +74,7 @@ export default function TopNav() {
           </div>
           <div className="flex flex-col">
             <span className="font-bold text-xl tracking-tight text-slate-900 dark:text-white leading-none transition-colors duration-300">
-              Thikana<span className="text-emerald-600">.</span>
+              {t('brandName')}<span className="text-emerald-600">.</span>
             </span>
             <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-widest mt-0.5 transition-colors duration-300">
               Rental Living

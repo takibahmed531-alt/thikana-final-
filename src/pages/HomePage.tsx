@@ -19,145 +19,8 @@ import { createSearchAlert } from '../services/alertService';
 import { useAuth } from '../context/AuthContext';
 import { PropertyListing } from '../types';
 import { useLanguage } from '../context/LanguageContext';
-
-// Dummy dataset of 8 realistic rental listings in Bangladesh
-const INITIAL_PROPERTIES: PropertyItem[] = [
-  {
-    id: 'prop-1',
-    adId: 'TK-123456',
-    title: 'Modern 3-BHK Family Flat with Rooftop Garden',
-    rentAmount: 36000,
-    location: 'Road 9A, Dhanmondi, Dhaka',
-    category: 'Family Flat',
-    isVerified: true,
-    isDemo: true,
-    imageUrl: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80',
-    bedrooms: 3,
-    bathrooms: 3,
-    areaSqft: 1650,
-    postedTime: '2 hrs ago',
-    genderPreference: 'Any',
-    status: 'available',
-  },
-  {
-    id: 'prop-2',
-    adId: 'TK-204512',
-    title: 'Furnished Bachelor Studio with High-Speed WiFi',
-    rentAmount: 16500,
-    location: 'Block C, Banani, Dhaka',
-    category: 'Bachelor',
-    isVerified: true,
-    isDemo: true,
-    imageUrl: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=800&q=80',
-    bedrooms: 1,
-    bathrooms: 1,
-    areaSqft: 520,
-    postedTime: '5 hrs ago',
-    genderPreference: 'Male',
-    status: 'available',
-  },
-  {
-    id: 'prop-3',
-    adId: 'TK-308921',
-    title: 'Executive Master Bedroom Sublet for Female Executive',
-    rentAmount: 12000,
-    location: 'Sector 7, Uttara, Dhaka',
-    category: 'Sublet',
-    isVerified: false,
-    isDemo: true,
-    imageUrl: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=800&q=80',
-    bedrooms: 1,
-    bathrooms: 1,
-    areaSqft: 340,
-    postedTime: '1 day ago',
-    genderPreference: 'Female',
-    status: 'available',
-  },
-  {
-    id: 'prop-4',
-    adId: 'TK-410293',
-    title: 'Spacious 4-BHK Luxury South-Facing Flat',
-    rentAmount: 52000,
-    location: 'Mirpur DOHS, Dhaka',
-    category: 'Family Flat',
-    isVerified: true,
-    isDemo: true,
-    imageUrl: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
-    bedrooms: 4,
-    bathrooms: 4,
-    areaSqft: 2200,
-    postedTime: '1 day ago',
-    status: 'available',
-  },
-  {
-    id: 'prop-5',
-    adId: 'TK-512944',
-    title: 'Single Seat in University Student Mess with Meal Facility',
-    rentAmount: 5500,
-    location: 'Block D, Bashundhara R/A, Dhaka',
-    category: 'Mess',
-    isVerified: true,
-    isDemo: true,
-    imageUrl: 'https://images.unsplash.com/photo-1555854877-bab0e564b8d5?auto=format&fit=crop&w=800&q=80',
-    bedrooms: 1,
-    bathrooms: 1,
-    areaSqft: 180,
-    postedTime: '2 days ago',
-    genderPreference: 'Male',
-    availableSeats: 2,
-    status: 'available',
-  },
-  {
-    id: 'prop-6',
-    adId: 'TK-619842',
-    title: 'Cozy 2-BHK Apartment near GEC Circle',
-    rentAmount: 24000,
-    location: 'Nasirabad, GEC Circle, Chattogram',
-    category: 'Family Flat',
-    isVerified: false,
-    isDemo: true,
-    imageUrl: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80',
-    bedrooms: 2,
-    bathrooms: 2,
-    areaSqft: 1100,
-    postedTime: '3 days ago',
-    status: 'rented',
-  },
-  {
-    id: 'prop-7',
-    adId: 'TK-724185',
-    title: 'Quiet Bachelor Suite near Zindabazar Hub',
-    rentAmount: 11500,
-    location: 'Kumarpara, Zindabazar, Sylhet',
-    category: 'Bachelor',
-    isVerified: true,
-    isDemo: true,
-    imageUrl: 'https://images.unsplash.com/photo-1598928506311-c55ded91a20c?auto=format&fit=crop&w=800&q=80',
-    bedrooms: 1,
-    bathrooms: 1,
-    areaSqft: 400,
-    postedTime: '4 days ago',
-    genderPreference: 'Male',
-    status: 'available',
-  },
-  {
-    id: 'prop-8',
-    adId: 'TK-831950',
-    title: 'Single Room Sublet with Attached Balcony',
-    rentAmount: 9500,
-    location: 'Japan Garden City, Mohammadpur, Dhaka',
-    category: 'Sublet',
-    isVerified: true,
-    isDemo: true,
-    imageUrl: 'https://images.unsplash.com/photo-1595526114035-0d45ed16cfbf?auto=format&fit=crop&w=800&q=80',
-    bedrooms: 1,
-    bathrooms: 1,
-    areaSqft: 280,
-    postedTime: '5 days ago',
-    genderPreference: 'Female',
-    status: 'rented',
-  },
-];
+import { bdLocations } from '../utils/locationData';
+import { formatTimeAgo } from '../utils/timeUtils';
 
 const CATEGORIES = ['All', 'Family Flat', 'Bachelor', 'Sublet', 'Mess'];
 
@@ -173,7 +36,7 @@ function mapListingToPropertyItem(p: PropertyListing): PropertyItem {
   const firstImg =
     (p.images && p.images.length > 0 && p.images[0]) ||
     (p.imageUrls && p.imageUrls.length > 0 && p.imageUrls[0]) ||
-    'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80';
+    '';
 
   return {
     id: p.propertyId,
@@ -187,7 +50,7 @@ function mapListingToPropertyItem(p: PropertyListing): PropertyItem {
     bedrooms: p.bedrooms,
     bathrooms: p.bathrooms,
     areaSqft: p.areaSqft,
-    postedTime: 'Just now',
+    postedTime: p.createdAt ? formatTimeAgo(p.createdAt) : 'Recently posted',
     genderPreference: p.genderPreference,
     occupationPreference: p.occupationPreference,
     minAge: p.minAge,
@@ -199,8 +62,10 @@ function mapListingToPropertyItem(p: PropertyListing): PropertyItem {
 }
 
 export default function HomePage() {
-  const { t } = useLanguage();
+  const { t, translateCategory } = useLanguage();
   const [searchParams] = useSearchParams();
+  const [searchDivision, setSearchDivision] = useState('');
+  const [searchDistrict, setSearchDistrict] = useState('');
   const [searchArea, setSearchArea] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [showFilters, setShowFilters] = useState(false);
@@ -213,11 +78,16 @@ export default function HomePage() {
   const [hasMore, setHasMore] = useState<boolean>(false);
   const [loadingMore, setLoadingMore] = useState<boolean>(false);
 
-  // Check if there is a q parameter in the URL and set the searchArea state to that value automatically on page load
+  // Check if there is a q parameter in the URL and set searchDivision or searchArea state
   useEffect(() => {
     const q = searchParams.get('q');
     if (q) {
-      setSearchArea(q);
+      // Check if q matches a division, otherwise set it to searchArea broadly
+      if (Object.keys(bdLocations).includes(q)) {
+        setSearchDivision(q);
+      } else {
+        setSearchArea(q);
+      }
     }
   }, [searchParams]);
 
@@ -242,14 +112,14 @@ export default function HomePage() {
     setAlertMessage(null);
 
     try {
-      const area = searchArea.trim() || 'All areas';
+      const locationText = [searchArea, searchDistrict, searchDivision].filter(Boolean).join(', ') || 'All areas';
       const category = selectedCategory || 'All';
-      await createSearchAlert(user.uid, area, category, {
+      await createSearchAlert(user.uid, locationText, category, {
         userEmail: user.email || '',
       });
       setAlertMessage({
         type: 'success',
-        text: `Alert saved! We will send email notifications to ${user.email || 'your account'} when properties in "${area}" (${category}) become available.`,
+        text: `Alert saved! We will send email notifications to ${user.email || 'your account'} when properties in "${locationText}" (${category}) become available.`,
       });
       // Auto-clear success message after 5 seconds
       setTimeout(() => {
@@ -266,10 +136,11 @@ export default function HomePage() {
   };
 
   useEffect(() => {
+    let isMounted = true;
     async function loadInitialProperties() {
       try {
         const res = await getProperties({ pageSize: 6 });
-        if (res.success && res.properties) {
+        if (isMounted && res.success && res.properties) {
           const mapped = res.properties.map(mapListingToPropertyItem);
           setLiveProperties(mapped);
           setLastVisibleDoc(res.lastDoc);
@@ -281,6 +152,9 @@ export default function HomePage() {
     }
 
     loadInitialProperties();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const handleLoadMore = async () => {
@@ -307,19 +181,9 @@ export default function HomePage() {
     }
   };
 
-  // Filter properties dynamically by search area and active category
+  // Filter properties dynamically by 3-tier location and active category
   const filteredProperties = useMemo(() => {
-    const allProps = [...liveProperties, ...INITIAL_PROPERTIES];
-    const query = searchArea.trim();
-    const lowerQuery = query.toLowerCase();
-
-    // Check if searchArea starts with 'TK-' or matches an adId pattern (e.g. TK-, THK-, ID: TK-, or XX-XXXX)
-    const isAdIdSearch =
-      lowerQuery.startsWith('tk-') ||
-      lowerQuery.startsWith('thk-') ||
-      lowerQuery.startsWith('id:') ||
-      /^(tk|thk)[-_]?[a-z0-9]+/i.test(lowerQuery) ||
-      /^[a-z]{2,4}-\d{3,}/i.test(lowerQuery);
+    const allProps = [...liveProperties];
 
     return allProps.filter((prop) => {
       // Category match
@@ -327,27 +191,28 @@ export default function HomePage() {
         selectedCategory === 'All' ||
         prop.category.toLowerCase() === selectedCategory.toLowerCase();
 
-      // Search match
-      let searchMatch = true;
-      if (query) {
-        if (isAdIdSearch) {
-          const cleanedSearch = lowerQuery.replace(/^id:\s*/i, '').trim();
+      // Location match logic
+      let locationMatch = true;
+      const adLocation = prop.location.toLowerCase();
+      
+      if (searchDivision) {
+        locationMatch = locationMatch && adLocation.includes(searchDivision.toLowerCase());
+      }
+      if (searchDistrict) {
+        locationMatch = locationMatch && adLocation.includes(searchDistrict.toLowerCase());
+      }
+      if (searchArea) {
+        // Allow text search to match either area or title
+        locationMatch = locationMatch && (adLocation.includes(searchArea.toLowerCase()) || prop.title.toLowerCase().includes(searchArea.toLowerCase()));
+      }
+
+      // Check Ad ID search logic (keep existing fallback functionality but tie it to searchArea input)
+      if (searchArea && /^(tk|thk|id:)/i.test(searchArea.trim())) {
+          const cleanedSearch = searchArea.trim().toLowerCase().replace(/^id:\s*/i, '');
           const adIdLower = (prop.adId || '').toLowerCase();
-
-          // Backward compatibility fallback for older items without adId
-          const fallbackAdId = prop.id
-            ? `tk-${prop.id.replace(/[^a-z0-9]/g, '').slice(0, 6)}`.toLowerCase()
-            : '';
-
-          searchMatch =
-            (adIdLower.length > 0 && (adIdLower === cleanedSearch || adIdLower.includes(cleanedSearch))) ||
-            (fallbackAdId.length > 0 && (fallbackAdId === cleanedSearch || fallbackAdId.includes(cleanedSearch)));
-        } else {
-          // If the search string is not an ID, continue to filter by location and title as it currently does
-          searchMatch =
-            prop.location.toLowerCase().includes(lowerQuery) ||
-            prop.title.toLowerCase().includes(lowerQuery);
-        }
+          const fallbackAdId = prop.id ? `tk-${prop.id.replace(/[^a-z0-9]/g, '').slice(0, 6)}`.toLowerCase() : '';
+          locationMatch = (adIdLower.length > 0 && (adIdLower === cleanedSearch || adIdLower.includes(cleanedSearch))) || 
+                          (fallbackAdId.length > 0 && (fallbackAdId === cleanedSearch || fallbackAdId.includes(cleanedSearch)));
       }
 
       const genderMatch = filterGender === 'Any' || prop.genderPreference === filterGender;
@@ -359,21 +224,29 @@ export default function HomePage() {
       const minBudgetMatch = !filterMinRent || prop.rentAmount >= Number(filterMinRent);
       const maxBudgetMatch = !filterMaxRent || prop.rentAmount <= Number(filterMaxRent);
 
-      return categoryMatch && searchMatch && genderMatch && occupationMatch && minBudgetMatch && maxBudgetMatch;
+      return categoryMatch && locationMatch && genderMatch && occupationMatch && minBudgetMatch && maxBudgetMatch;
     });
-  }, [searchArea, selectedCategory, liveProperties, filterGender, filterOccupation, filterMinRent, filterMaxRent]);
+  }, [searchDivision, searchDistrict, searchArea, selectedCategory, liveProperties, filterGender, filterOccupation, filterMinRent, filterMaxRent]);
+
+  const handleClearLocation = () => {
+    setSearchDivision('');
+    setSearchDistrict('');
+    setSearchArea('');
+  };
+
+  const hasActiveLocationFilter = Boolean(searchDivision || searchDistrict || searchArea);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8">
       {/* ---------------------------------------------------- */}
-      {/* Task 2: Hero Section with Search Bar                */}
+      {/* Task 2: Hero Section with 3-Tier Location Search Bar */}
       {/* ---------------------------------------------------- */}
       <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 text-white p-6 sm:p-10 lg:p-12 shadow-2xl border border-slate-800">
         {/* Subtle decorative glow */}
         <div className="absolute -right-16 -top-16 w-80 h-80 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute left-1/3 -bottom-20 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
 
-        <div className="relative z-10 max-w-3xl space-y-5">
+        <div className="relative z-10 max-w-4xl space-y-5">
           {/* Badge */}
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs font-semibold tracking-wide">
             <Sparkles className="w-3.5 h-3.5" />
@@ -384,73 +257,135 @@ export default function HomePage() {
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white leading-tight">
             {t('heroTitleStart')}{' '}
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-200">
-              Thikana
+              {t('brandName')}
             </span>
             .
           </h1>
 
           <p className="text-slate-300 text-sm sm:text-base max-w-2xl leading-relaxed">
-            {t('heroSubtitle')}
+            {t('brandSlogan')}
           </p>
 
-          {/* Search Input Field (to search by area) */}
-          <div className="pt-2 max-w-2xl">
-            <div className="relative flex items-center shadow-lg">
-              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
-                <MapPin className="w-5 h-5 text-emerald-400" />
+          {/* Structured 3-Tier Search Box (Division > District > Area / Keyword) */}
+          <div className="pt-2 max-w-3xl space-y-2.5">
+            <div className="bg-white/95 backdrop-blur-md rounded-2xl p-2 sm:p-2.5 shadow-xl border border-white/20 text-slate-900">
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center">
+                {/* 1. Division Selector */}
+                <div className="sm:col-span-4 relative">
+                  <select
+                    value={searchDivision}
+                    onChange={(e) => {
+                      setSearchDivision(e.target.value);
+                      setSearchDistrict('');
+                    }}
+                    className="w-full bg-slate-100 hover:bg-slate-200/80 transition-colors text-slate-900 rounded-xl px-3 py-2.5 text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer appearance-none pr-8"
+                  >
+                    <option value="">All Divisions (সকল বিভাগ)</option>
+                    {Object.keys(bdLocations).map((div) => (
+                      <option key={div} value={div}>
+                        {div}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500 text-xs">
+                    ▼
+                  </div>
+                </div>
+
+                {/* 2. District Selector */}
+                <div className="sm:col-span-4 relative">
+                  <select
+                    value={searchDistrict}
+                    disabled={!searchDivision}
+                    onChange={(e) => setSearchDistrict(e.target.value)}
+                    className="w-full bg-slate-100 hover:bg-slate-200/80 transition-colors text-slate-900 rounded-xl px-3 py-2.5 text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer appearance-none pr-8 disabled:bg-slate-100/50 disabled:text-slate-400 disabled:cursor-not-allowed"
+                  >
+                    <option value="">
+                      {searchDivision ? 'All Districts (সকল জেলা)' : 'Select Division first'}
+                    </option>
+                    {searchDivision &&
+                      bdLocations[searchDivision] &&
+                      Object.keys(bdLocations[searchDivision]).map((dist) => (
+                        <option key={dist} value={dist}>
+                          {dist}
+                        </option>
+                      ))}
+                  </select>
+                  <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500 text-xs">
+                    ▼
+                  </div>
+                </div>
+
+                {/* 3. Area / Keyword / Ad ID Search */}
+                <div className="sm:col-span-4 relative flex items-center">
+                  <div className="relative w-full">
+                    <input
+                      type="text"
+                      value={searchArea}
+                      onChange={(e) => setSearchArea(e.target.value)}
+                      placeholder="Area, title or Ad ID (e.g. TK-...)"
+                      className="w-full pl-8 pr-7 py-2.5 bg-slate-100 hover:bg-slate-200/80 focus:bg-white transition-colors text-slate-900 placeholder-slate-400 rounded-xl text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                    <MapPin className="w-3.5 h-3.5 text-emerald-600 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    {searchArea && (
+                      <button
+                        type="button"
+                        onClick={() => setSearchArea('')}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+                        aria-label="Clear area input"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
 
-              <input
-                type="text"
-                value={searchArea}
-                onChange={(e) => setSearchArea(e.target.value)}
-                placeholder={t('homeSearchPlaceholder')}
-                className="w-full pl-12 pr-32 py-3.5 sm:py-4 bg-white/95 text-slate-900 placeholder-slate-400 rounded-2xl text-sm sm:text-base font-medium focus:outline-none focus:ring-4 focus:ring-emerald-500/30 transition-all border border-white/20"
-              />
+              {/* Action buttons row inside search container */}
+              <div className="flex items-center justify-between pt-2 px-1 border-t border-slate-200/60 mt-2">
+                <div className="text-[11px] text-slate-500 truncate max-w-[200px] sm:max-w-xs">
+                  {hasActiveLocationFilter ? (
+                    <span className="font-semibold text-emerald-700">
+                      Filtering: {[searchArea, searchDistrict, searchDivision].filter(Boolean).join(' • ')}
+                    </span>
+                  ) : (
+                    <span>Browse properties across Bangladesh</span>
+                  )}
+                </div>
 
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
-                {searchArea && (
+                <div className="flex items-center gap-1.5">
+                  {hasActiveLocationFilter && (
+                    <button
+                      type="button"
+                      onClick={handleClearLocation}
+                      className="px-2.5 py-1.5 text-xs text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors flex items-center gap-1 font-medium"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                      Clear
+                    </button>
+                  )}
+
                   <button
                     type="button"
-                    onClick={() => setSearchArea('')}
-                    className="p-1 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
-                    aria-label="Clear area search"
+                    onClick={() => setShowFilters((prev) => !prev)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                      showFilters || filterGender !== 'Any' || filterOccupation !== 'Any' || filterMinRent || filterMaxRent
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
+                    }`}
+                    title="Toggle Advanced Filters"
+                    aria-label="Toggle Advanced Filters"
                   >
-                    <X className="w-4 h-4" />
+                    <SlidersHorizontal className="w-3.5 h-3.5" />
+                    Filters
                   </button>
-                )}
-
-                <button
-                  type="button"
-                  className="p-2 rounded-xl border bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-500 shadow-sm transition-all cursor-pointer"
-                  title="Search"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    (document.activeElement as HTMLElement)?.blur();
-                  }}
-                >
-                  <Search className="w-4 h-4" />
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setShowFilters((prev) => !prev)}
-                  className={`p-2 rounded-xl border transition-all cursor-pointer ${
-                    showFilters || filterGender !== 'Any' || filterOccupation !== 'Any' || filterMinRent || filterMaxRent
-                      ? 'bg-emerald-600 text-white border-emerald-500 shadow-sm'
-                      : 'bg-slate-100 hover:bg-slate-200 text-slate-600 border-slate-200'
-                  }`}
-                  title="Toggle Advanced Filters"
-                  aria-label="Toggle Advanced Filters"
-                >
-                  <SlidersHorizontal className="w-4 h-4" />
-                </button>
+                </div>
               </div>
             </div>
 
             {/* Conditionally Rendered Advanced Filter Panel */}
             {showFilters && (
-              <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-4 sm:p-5 mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-in fade-in zoom-in-95 duration-150">
+              <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-4 sm:p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-in fade-in zoom-in-95 duration-150">
                 {/* Gender Preference */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-200 mb-1.5 uppercase tracking-wide">
@@ -518,7 +453,7 @@ export default function HomePage() {
             {/* Quick Suggestions Chips */}
             <div className="flex flex-wrap items-center gap-2 mt-3 text-xs text-slate-300">
               <span className="text-slate-400 font-medium">{t('popularAreas')}</span>
-              {['Dhanmondi', 'Mohammadpur', 'Mirpur', 'Uttara', 'Banani', 'Badda', 'Farmgate'].map((area) => (
+              {['Dhanmondi', 'Mohammadpur', 'Mirpur', 'Uttara', 'Banani', 'GEC Circle', 'Zindabazar'].map((area) => (
                 <button
                   key={area}
                   type="button"
@@ -567,7 +502,7 @@ export default function HomePage() {
                       : 'bg-white text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200'
                   }`}
                 >
-                  {cat}
+                  {translateCategory(cat)}
                 </button>
               );
             })}

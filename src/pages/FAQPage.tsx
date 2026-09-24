@@ -35,7 +35,7 @@ export default function FAQPage() {
     {
       id: 'login-1',
       category: 'login',
-      question: 'How do I create an account or sign in to Thikana?',
+      question: 'How do I create an account or sign in to Bhara Hobe?',
       icon: KeyRound,
       answer:
         'You can sign up or sign in instantly with one click using "Continue with Google". This securely links your verified account without requiring you to remember a separate password. If your email or phone is already registered, you can also sign in directly using your credentials.',
@@ -69,7 +69,7 @@ export default function FAQPage() {
     {
       id: 'posting-1',
       category: 'posting',
-      question: 'How do I post a rental property ad on Thikana?',
+      question: 'How do I post a rental property ad on Bhara Hobe?',
       icon: Building,
       answer:
         'Click "Post Ad" in the navigation bar. If logged in with a verified account, you will see a simple 3-step listing builder. You can specify property type (Family, Bachelor/Sublet, Apartment, Commercial), monthly rent, location area, amenities, and upload property photos.',
@@ -80,7 +80,7 @@ export default function FAQPage() {
       question: 'Is there any fee or commission to post a rental listing?',
       icon: DollarSign,
       answer:
-        'No. Posting standard rental property ads on Thikana is 100% free of charge for landlords, homeowners, and sublet hosts. We do not deduct middleman brokerage commissions.',
+        'No. Posting standard rental property ads on Bhara Hobe is 100% free of charge for landlords, homeowners, and sublet hosts. We do not deduct middleman brokerage commissions.',
     },
     {
       id: 'posting-3',
@@ -103,10 +103,10 @@ export default function FAQPage() {
     {
       id: 'safety-1',
       category: 'safety',
-      question: 'How does Thikana protect tenants from rental advance scams?',
+      question: 'How does Bhara Hobe protect tenants from rental advance scams?',
       icon: ShieldAlert,
       answer:
-        'Golden Rule: Never transfer advance booking money, bKash, or security deposits before visiting the property in person and verifying the physical premises with the landlord. Thikana provides built-in reporting tools on every listing to instantly flag suspicious claims.',
+        'Golden Rule: Never transfer advance booking money, bKash, or security deposits before visiting the property in person and verifying the physical premises with the landlord. Bhara Hobe provides built-in reporting tools on every listing to instantly flag suspicious claims.',
     },
     {
       id: 'safety-2',
@@ -114,7 +114,7 @@ export default function FAQPage() {
       question: 'What does the "Verified User" checkmark mean?',
       icon: BadgeCheck,
       answer:
-        'A user with a Verified badge has verified their identity credentials with Thikana. Verified landlords and tenants are distinguished with an emerald shield badge across listing cards and messages.',
+        'A user with a Verified badge has verified their identity credentials with Bhara Hobe. Verified landlords and tenants are distinguished with an emerald shield badge across listing cards and messages.',
     },
     {
       id: 'safety-3',
@@ -122,7 +122,7 @@ export default function FAQPage() {
       question: 'How does in-app chat protect my privacy?',
       icon: MessageSquare,
       answer:
-        'Thikana\'s built-in chat allows tenants and landlords to discuss rent, scheduling visits, and inquiries without sharing personal phone numbers or social media handles prematurely until both parties are comfortable.',
+        'Bhara Hobe\'s built-in chat allows tenants and landlords to discuss rent, scheduling visits, and inquiries without sharing personal phone numbers or social media handles prematurely until both parties are comfortable.',
     },
     {
       id: 'safety-4',
@@ -165,7 +165,7 @@ export default function FAQPage() {
           How can we help you?
         </h1>
         <p className="mt-3 text-sm sm:text-base text-slate-600 dark:text-slate-400">
-          Find instant answers to common questions about accounts, posting rental ads, and safety on Thikana.
+          Find instant answers to common questions about accounts, posting rental ads, and safety on Bhara Hobe.
         </p>
 
         {/* Search Bar */}
@@ -303,7 +303,7 @@ export default function FAQPage() {
             Still have questions or need assistance?
           </h3>
           <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
-            Our Thikana Support team is ready to assist you with account verification, listings, or technical help.
+            Our Bhara Hobe Support team is ready to assist you with account verification, listings, or technical help.
           </p>
         </div>
         <Link

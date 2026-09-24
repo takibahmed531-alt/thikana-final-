@@ -26,6 +26,7 @@ import {
   getPropertyById,
   updatePropertyListing,
 } from '../services/propertyService';
+import { bdLocations } from '../utils/locationData';
 import { PropertyCategory, GenderPreference } from '../types';
 
 // Fix for default Leaflet marker icons in bundlers
@@ -36,9 +37,9 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
 
-// Custom Thikana Brand Pin Icon using L.divIcon
-const customThikanaPin = L.divIcon({
-  className: 'thikana-map-pin',
+// Custom Bhara Hobe Brand Pin Icon using L.divIcon
+const customBharaHobePin = L.divIcon({
+  className: 'bharahobe-map-pin',
   html: `
     <div style="position: relative; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
       <div style="position: absolute; width: 36px; height: 36px; background-color: rgba(16, 185, 129, 0.3); border-radius: 9999px; animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>
@@ -56,12 +57,12 @@ const customThikanaPin = L.divIcon({
 });
 
 const CATEGORIES: { value: PropertyCategory; label: string }[] = [
-  { value: 'apartment', label: 'Apartment / Flat' },
-  { value: 'house', label: 'Full Independent House' },
-  { value: 'family_unit', label: 'Family Unit' },
-  { value: 'bachelor_sublet', label: 'Bachelor / Sublet Room' },
-  { value: 'hostel', label: 'Student / Executive Hostel' },
-  { value: 'commercial', label: 'Commercial Space / Office' },
+  { value: 'apartment', label: 'Family Apartment (ফ্যামিলি বাসা)' },
+  { value: 'house', label: 'Independent House (বাড়ি/ডুপ্লেক্স)' },
+  { value: 'family_unit', label: 'Family Unit (ছোট ফ্যামিলি)' },
+  { value: 'bachelor_sublet', label: 'Bachelor / Sublet (ব্যাচেলর/সাবলেট)' },
+  { value: 'hostel', label: 'Hostel / Mess (হোস্টেল/মেস)' },
+  { value: 'commercial', label: 'Office / Shop (অফিস/দোকান ভাড়া)' },
 ];
 
 const COMMON_AMENITIES = [
@@ -135,13 +136,15 @@ export default function PostAdPage() {
 
   // Evaluate if user is logged in but has an unverified non-phone email address
   const isUnverified = Boolean(
-    user && !user.emailVerified && user.email && !user.email.endsWith('@thikana.app')
+    user && !user.emailVerified && user.email && !user.email.endsWith('@bharahobe.app') && !user.email.endsWith('@thikana.app')
   );
 
   const [title, setTitle] = useState('');
   const [rentAmount, setRentAmount] = useState('');
   const [category, setCategory] = useState<PropertyCategory>('apartment');
-  const [location, setLocation] = useState('');
+  const [division, setDivision] = useState('');
+  const [district, setDistrict] = useState('');
+  const [area, setArea] = useState('');
   const [genderPreference, setGenderPreference] = useState<GenderPreference>('Any');
   const [occupationPreference, setOccupationPreference] = useState('Any');
   const [minAge, setMinAge] = useState('');
@@ -151,6 +154,8 @@ export default function PostAdPage() {
   const [bathrooms, setBathrooms] = useState('');
   const [areaSqft, setAreaSqft] = useState('');
   const [floor, setFloor] = useState('');
+  const [availableFrom, setAvailableFrom] = useState('');
+  const [utilityTerms, setUtilityTerms] = useState('Bills Excluded (গ্যাস, কারেন্ট, পানি বিল আলাদা)');
   const [coordinates, setCoordinates] = useState<[number, number]>(DHAKA_DEFAULT_COORDINATES);
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>(['WiFi', 'Lift / Elevator', 'CCTV Security']);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
@@ -172,7 +177,16 @@ export default function PostAdPage() {
           setTitle(prop.title || '');
           setRentAmount(prop.rentAmount !== undefined ? String(prop.rentAmount) : '');
           if (prop.category) setCategory(prop.category as PropertyCategory);
-          setLocation(prop.location || '');
+          if (prop.location) {
+            const parts = prop.location.split(', ').reverse();
+            if (parts.length >= 3) {
+              setDivision(parts[0]);
+              setDistrict(parts[1]);
+              setArea(parts.slice(2).reverse().join(', '));
+            } else {
+              setArea(prop.location); // Fallback for old unformatted data
+            }
+          }
           if (prop.coordinates && prop.coordinates.length === 2) {
             setCoordinates(prop.coordinates as [number, number]);
           }
@@ -183,6 +197,8 @@ export default function PostAdPage() {
             setGenderPreference(prop.genderPreference as GenderPreference);
           }
           if (prop.occupationPreference) setOccupationPreference(prop.occupationPreference as string);
+          if ((prop as any).availableFrom) setAvailableFrom((prop as any).availableFrom);
+          if ((prop as any).utilityTerms) setUtilityTerms((prop as any).utilityTerms);
           if (prop.minAge !== undefined) setMinAge(String(prop.minAge));
           if (prop.maxAge !== undefined) setMaxAge(String(prop.maxAge));
           if (prop.availableSeats !== undefined && prop.availableSeats !== null) {
@@ -192,6 +208,7 @@ export default function PostAdPage() {
           if ((prop as any).bathrooms !== undefined) setBathrooms(String((prop as any).bathrooms));
           if ((prop as any).areaSqft !== undefined) setAreaSqft(String((prop as any).areaSqft));
           if ((prop as any).floor !== undefined) setFloor(String((prop as any).floor));
+
           const existingImgs =
             Array.isArray(prop.images) && prop.images.length > 0
               ? prop.images
@@ -211,7 +228,6 @@ export default function PostAdPage() {
     }
 
     fetchPropertyToEdit();
-
     return () => {
       isMounted = false;
     };
@@ -244,8 +260,8 @@ export default function PostAdPage() {
       return;
     }
 
-    if (!title.trim() || !rentAmount || !location.trim()) {
-      setErrorMsg('Please fill in all required fields.');
+    if (!title.trim() || !rentAmount || !division || !district || !area.trim()) {
+      setErrorMsg('Please fill in all required fields including division, district, and area.');
       return;
     }
 
@@ -276,7 +292,7 @@ export default function PostAdPage() {
           title: title.trim(),
           rentAmount: Number(rentAmount),
           category,
-          location: location.trim(),
+          location: `${area}, ${district}, ${division}`.trim(),
           amenities: selectedAmenities,
           genderPreference,
           occupationPreference,
@@ -289,6 +305,8 @@ export default function PostAdPage() {
           ...(parsedBathrooms !== undefined && !isNaN(parsedBathrooms) && parsedBathrooms >= 0 ? { bathrooms: parsedBathrooms } : {}),
           ...(parsedAreaSqft !== undefined && !isNaN(parsedAreaSqft) && parsedAreaSqft > 0 ? { areaSqft: parsedAreaSqft } : {}),
           ...(parsedFloor !== undefined ? { floor: parsedFloor } : {}),
+          availableFrom: availableFrom.trim() || 'Available Now',
+          utilityTerms,
           coordinates,
           images: validExistingImages,
         };
@@ -305,7 +323,7 @@ export default function PostAdPage() {
             title: title.trim(),
             rentAmount: Number(rentAmount),
             category,
-            location: location.trim(),
+            location: `${area}, ${district}, ${division}`.trim(),
             amenities: selectedAmenities,
             images: validExistingImages,
             genderPreference,
@@ -319,6 +337,8 @@ export default function PostAdPage() {
             ...(parsedBathrooms !== undefined && !isNaN(parsedBathrooms) && parsedBathrooms >= 0 ? { bathrooms: parsedBathrooms } : {}),
             ...(parsedAreaSqft !== undefined && !isNaN(parsedAreaSqft) && parsedAreaSqft > 0 ? { areaSqft: parsedAreaSqft } : {}),
             ...(parsedFloor !== undefined ? { floor: parsedFloor } : {}),
+            availableFrom: availableFrom.trim() || 'Available Now',
+            utilityTerms,
             status: 'available',
             coordinates,
           },
@@ -461,6 +481,54 @@ export default function PostAdPage() {
                   </option>
                 ))}
               </select>
+            </div>
+          </div>
+
+          {/* Available From and Utility Terms */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wide mb-1.5">
+                Available From (ভাড়া শুরুর সময়)
+              </label>
+              <input
+                type="text"
+                value={availableFrom}
+                onChange={(e) => setAvailableFrom(e.target.value)}
+                placeholder="e.g. 1st Next Month / Available Now"
+                className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 shadow-xs"
+              />
+              <p className="text-[11px] text-slate-500 mt-1">
+                When will this property be ready for move-in?
+              </p>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wide mb-1.5">
+                Utility & Bills Terms (বিল নীতি)
+              </label>
+              <select
+                value={utilityTerms}
+                onChange={(e) => setUtilityTerms(e.target.value)}
+                className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 shadow-xs"
+              >
+                <option value="Bills Excluded (গ্যাস, কারেন্ট, পানি বিল আলাদা)">
+                  Bills Excluded (গ্যাস, কারেন্ট, পানি বিল আলাদা)
+                </option>
+                <option value="Bills Included (সব বিল ভাড়া অন্তর্ভুক্ত)">
+                  Bills Included (সব বিল ভাড়া অন্তর্ভুক্ত)
+                </option>
+                <option value="Electricity Prepaid, Gas/Water Included (বিদ্যুৎ প্রিপেইড, গ্যাস/পানি অন্তর্ভুক্ত)">
+                  Electricity Prepaid, Gas/Water Included (বিদ্যুৎ প্রিপেইড, গ্যাস/পানি অন্তর্ভুক্ত)
+                </option>
+                <option value="Service Charge Extra + Bills Separate (সার্ভিস চার্জ ও বিল আলাদা)">
+                  Service Charge Extra + Bills Separate (সার্ভিস চার্জ ও বিল আলাদা)
+                </option>
+                <option value="Negotiable (আলোচনা সাপেক্ষে)">
+                  Negotiable (আলোচনা সাপেক্ষে)
+                </option>
+              </select>
+              <p className="text-[11px] text-slate-500 mt-1">
+                Clarifies whether utilities are included or separate.
+              </p>
             </div>
           </div>
 
@@ -612,19 +680,119 @@ export default function PostAdPage() {
             </div>
           </div>
 
-          {/* Location Area Text */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wide mb-1.5">
-              Specific Location / Area Name *
-            </label>
-            <input
-              type="text"
-              required
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              placeholder="e.g. Road 9A, Dhanmondi, Dhaka"
-              className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 shadow-xs"
-            />
+          {/* Cascading Location Picker (Division > District > Area) */}
+          <div className="space-y-3 p-4 bg-slate-50/70 border border-slate-200 rounded-2xl">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+              <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wide flex items-center gap-1.5">
+                <MapPin className="w-4 h-4 text-emerald-600" />
+                Property Location (বিভাগ, জেলা ও এলাকা) *
+              </label>
+              {division && district && area && (
+                <span className="text-[11px] font-medium text-emerald-700 bg-emerald-100/70 px-2 py-0.5 rounded-md truncate max-w-full sm:max-w-[320px]">
+                  {area}, {district}, {division}
+                </span>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {/* Division Selector */}
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                  1. Division (বিভাগ) *
+                </label>
+                <select
+                  required
+                  value={division}
+                  onChange={(e) => {
+                    setDivision(e.target.value);
+                    setDistrict('');
+                    setArea('');
+                  }}
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 shadow-xs"
+                >
+                  <option value="">Select Division</option>
+                  {Object.keys(bdLocations).map((div) => (
+                    <option key={div} value={div}>
+                      {div}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* District Selector */}
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                  2. District (জেলা) *
+                </label>
+                <select
+                  required
+                  disabled={!division}
+                  value={district}
+                  onChange={(e) => {
+                    setDistrict(e.target.value);
+                    setArea('');
+                  }}
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 shadow-xs disabled:bg-slate-100 disabled:text-slate-400"
+                >
+                  <option value="">{division ? 'Select District' : 'Select Division first'}</option>
+                  {division &&
+                    bdLocations[division] &&
+                    Object.keys(bdLocations[division]).map((dist) => (
+                      <option key={dist} value={dist}>
+                        {dist}
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              {/* Area / Neighborhood Selector or Input */}
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                  3. Area / Neighborhood (এলাকা) *
+                </label>
+                {division && district && bdLocations[division]?.[district] ? (
+                  <select
+                    required
+                    disabled={!district}
+                    value={area}
+                    onChange={(e) => setArea(e.target.value)}
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 shadow-xs disabled:bg-slate-100 disabled:text-slate-400"
+                  >
+                    <option value="">Select Area</option>
+                    {bdLocations[division][district].map((a) => (
+                      <option key={a} value={a}>
+                        {a}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    required
+                    value={area}
+                    onChange={(e) => setArea(e.target.value)}
+                    placeholder="e.g. Dhanmondi / GEC Circle"
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 shadow-xs"
+                  />
+                )}
+              </div>
+            </div>
+
+            {/* Optional specific road/block details */}
+            {division && district && (
+              <div>
+                <input
+                  type="text"
+                  value={area}
+                  onChange={(e) => setArea(e.target.value)}
+                  placeholder="Or type custom road / sector / holding details (e.g. Dhanmondi Road 9A, House 12)"
+                  className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 shadow-xs"
+                />
+                <p className="text-[10px] text-slate-500 mt-0.5">
+                  Pick from the preset area dropdown above or type specific road/block details.
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Task 2: Interactive Mini Map using react-leaflet */}
@@ -680,7 +848,7 @@ export default function PostAdPage() {
                 <MapResizer />
                 <MapFlyController center={coordinates} />
                 <MapClickHandler onSelectCoordinates={(coords) => setCoordinates(coords)} />
-                <Marker position={coordinates} icon={customThikanaPin} />
+                <Marker position={coordinates} icon={customBharaHobePin} />
               </MapContainer>
             </div>
           </div>
@@ -780,7 +948,7 @@ export default function PostAdPage() {
                     : 'Publishing...'
                   : editId
                   ? t('updateProperty')
-                  : t('publishToThikana')}
+                  : t('publishToBharaHobe')}
               </button>
             </div>
           </div>

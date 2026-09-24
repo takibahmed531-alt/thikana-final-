@@ -109,14 +109,14 @@ export function generatePropertyAlertEmailHtml(
 
   const viewUrl = typeof window !== 'undefined' && window.location?.origin
     ? `${window.location.origin}/#property-${propertyId}`
-    : `https://thikana.app/property/${propertyId}`;
+    : `https://bharahobe.app/property/${propertyId}`;
 
   const subject = `🏠 New Property Match: ${title} in ${location} (৳${rent}/mo)`;
 
   const text = `
-Thikana Property Alert
+Bhara Hobe Property Alert
 
-A new property matching your saved preferences has just been posted on Thikana:
+A new property matching your saved preferences has just been posted on Bhara Hobe:
 
 ${title}
 Rent: ৳${rent} / month
@@ -127,9 +127,9 @@ Listing ID: ${adId}
 View full listing & contact landlord:
 ${viewUrl}
 
-Security Notice: For your safety, always keep conversations and agreements within Thikana. Never send advance deposits or OTPs over unofficial channels.
+Security Notice: For your safety, always keep conversations and agreements within Bhara Hobe. Never send advance deposits or OTPs over unofficial channels.
 
-You are receiving this because you subscribed to property alerts on Thikana.
+You are receiving this because you subscribed to property alerts on Bhara Hobe.
 `;
 
   const html = `
@@ -157,7 +157,7 @@ You are receiving this because you subscribed to property alerts on Thikana.
                       Instant Property Alert
                     </span>
                     <h1 style="color:#FFFFFF;margin:0;font-size:22px;font-weight:700;line-height:1.2;">
-                      Thikana  ठिकाना
+                      Bhara Hobe  ভাড়া হবে
                     </h1>
                   </td>
                   <td align="right">
@@ -223,7 +223,7 @@ You are receiving this because you subscribed to property alerts on Thikana.
                   <tr>
                     <td width="28" valign="top" style="font-size:18px;">🛡️</td>
                     <td style="color:#92400E;font-size:12px;line-height:1.5;">
-                      <strong>Safety Reminder:</strong> Always verify documents before signing. Keep chat communications strictly within Thikana and never share OTPs or personal credentials.
+                      <strong>Safety Reminder:</strong> Always verify documents before signing. Keep chat communications strictly within Bhara Hobe and never share OTPs or personal credentials.
                     </td>
                   </tr>
                 </table>
@@ -235,10 +235,10 @@ You are receiving this because you subscribed to property alerts on Thikana.
           <tr>
             <td style="background-color:#F8FAFC;border-top:1px solid #E2E8F0;padding:20px 24px;text-align:center;">
               <p style="color:#94A3B8;font-size:12px;margin:0 0 8px 0;">
-                You received this automated email because you configured search alerts for <strong>${subscriberEmail}</strong> on Thikana.
+                You received this automated email because you configured search alerts for <strong>${subscriberEmail}</strong> on Bhara Hobe.
               </p>
               <p style="color:#94A3B8;font-size:11px;margin:0;">
-                © ${new Date().getFullYear()} Thikana Verified Rentals. All rights reserved.
+                © ${new Date().getFullYear()} Bhara Hobe Verified Rentals. All rights reserved.
               </p>
             </td>
           </tr>

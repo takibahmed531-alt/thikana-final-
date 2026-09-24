@@ -30,6 +30,7 @@ import {
   startConversationAndSendMessage,
   softDeleteConversation,
   toggleStarConversation,
+  deleteMessage,
   uploadChatImage,
   Conversation as LiveConversation,
   ChatMessage,
@@ -69,14 +70,14 @@ interface Conversation {
 }
 
 export default function ChatInterface() {
-  const { user } = useAuth();
+  const { user, openAuthModal } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const urlChatId = searchParams.get('chatId');
   const newPropertyId = searchParams.get('newPropertyId') || searchParams.get('propertyId');
   const landlordUid = searchParams.get('landlordUid');
 
   const [liveConversations, setLiveConversations] = useState<LiveConversation[]>([]);
-  const [partnerProfiles, setPartnerProfiles] = useState<Record<string, { name: string; avatar: string }>>({});
+  const [partnerProfiles, setPartnerProfiles] = useState<Record<string, { name: string; avatar: string; lastActive?: any }>>({});
   const [draftConversation, setDraftConversation] = useState<Conversation | null>(null);
   const [draftPropertyRaw, setDraftPropertyRaw] = useState<any>(null);
   const [liveMessages, setLiveMessages] = useState<Message[]>([]);
@@ -132,30 +133,56 @@ export default function ChatInterface() {
     };
   }, [user?.uid]);
 
+  // Helper to determine if a user timestamp is within 5 minutes (online)
+  const isUserOnline = (lastActive: any): boolean => {
+    if (!lastActive) return false;
+    let millis = 0;
+    if (typeof lastActive.toMillis === 'function') {
+      millis = lastActive.toMillis();
+    } else if (lastActive.seconds) {
+      millis = lastActive.seconds * 1000;
+    } else if (typeof lastActive === 'number') {
+      millis = lastActive;
+    } else if (lastActive instanceof Date) {
+      millis = lastActive.getTime();
+    }
+    if (!millis) return false;
+    return Date.now() - millis < 5 * 60 * 1000;
+  };
+
   // Fetch public profiles for chat partners to display real display names and avatars
   useEffect(() => {
-    if (!user?.uid || liveConversations.length === 0) return;
+    if (!user?.uid) return;
 
     const fetchPartnerProfiles = async () => {
-      const updates: Record<string, { name: string; avatar: string }> = {};
+      const updates: Record<string, { name: string; avatar: string; lastActive?: any }> = {};
+
+      const uidsToFetch = new Set<string>();
+      if (landlordUid && landlordUid !== user.uid) {
+        uidsToFetch.add(landlordUid);
+      }
 
       for (const liveConv of liveConversations) {
         const partnerUid =
           liveConv.landlordUid === user.uid
             ? liveConv.tenantUid
             : liveConv.landlordUid;
+        if (partnerUid) {
+          uidsToFetch.add(partnerUid);
+        }
+      }
 
-        if (partnerUid && !partnerProfiles[partnerUid] && !updates[partnerUid]) {
+      for (const partnerUid of uidsToFetch) {
+        if (!partnerProfiles[partnerUid] && !updates[partnerUid]) {
           try {
             const profileSnap = await getDoc(doc(db, 'publicProfiles', partnerUid));
             if (profileSnap.exists()) {
               const data = profileSnap.data();
-              if (data?.displayName || data?.photoURL) {
-                updates[partnerUid] = {
-                  name: data.displayName || '',
-                  avatar: data.photoURL || '',
-                };
-              }
+              updates[partnerUid] = {
+                name: data?.displayName || '',
+                avatar: data?.photoURL || '',
+                lastActive: data?.lastActive || null,
+              };
             }
           } catch (err) {
             console.warn(`Could not fetch public profile for ${partnerUid}:`, err);
@@ -169,13 +196,13 @@ export default function ChatInterface() {
     };
 
     fetchPartnerProfiles();
-  }, [liveConversations, user?.uid]);
+  }, [liveConversations, user?.uid, landlordUid]);
 
   // Handle direct navigation with newPropertyId and landlordUid
   useEffect(() => {
     if (!user || !newPropertyId) return;
 
-    const targetLandlordUid = landlordUid || 'landlord_demo_host';
+    const targetLandlordUid = landlordUid || '';
 
     // 1. Check if an existing live conversation already matches this property and landlord
     const existingLive = liveConversations.find(
@@ -196,18 +223,18 @@ export default function ChatInterface() {
 
     // 2. No live conversation exists yet: prepare an active draft conversation UI
     const draftId = `draft_${newPropertyId}_${targetLandlordUid}`;
+    const targetPartnerProfile = targetLandlordUid ? partnerProfiles[targetLandlordUid] : null;
 
     const initialDraft: Conversation = {
       id: draftId,
       isLive: true,
       propertyId: newPropertyId,
       user: {
-        name: 'Property Landlord',
-        avatar:
-          'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
+        name: targetPartnerProfile?.name || 'Property Landlord',
+        avatar: targetPartnerProfile?.avatar || '',
         isVerified: true,
         role: 'Landlord',
-        online: true,
+        online: isUserOnline(targetPartnerProfile?.lastActive),
       },
       propertyTitle: 'Property Inquiry',
       propertyPrice: '৳30,000/mo',
@@ -230,6 +257,7 @@ export default function ChatInterface() {
           setDraftPropertyRaw(prop);
           setDraftConversation((prev) => {
             if (!prev || prev.id !== draftId) return prev;
+            const livePartner = targetLandlordUid ? partnerProfiles[targetLandlordUid] : null;
             return {
               ...prev,
               propertyTitle: prop.title || prev.propertyTitle,
@@ -239,8 +267,9 @@ export default function ChatInterface() {
               propertyLocation: prop.location || prev.propertyLocation,
               user: {
                 ...prev.user,
-                name: (prop as any).landlord?.name || 'Landlord',
-                avatar: prop.images?.[0] || prev.user.avatar,
+                name: livePartner?.name || (prop as any).landlord?.name || 'Landlord',
+                avatar: livePartner?.avatar || prop.images?.[0] || prev.user.avatar,
+                online: isUserOnline(livePartner?.lastActive),
               },
             };
           });
@@ -249,7 +278,7 @@ export default function ChatInterface() {
       .catch((err) => {
         console.warn('Property lookup for draft chat notice:', err);
       });
-  }, [newPropertyId, landlordUid, liveConversations, user]);
+  }, [newPropertyId, landlordUid, liveConversations, user, partnerProfiles]);
 
   // Mark conversations as read when user opens and receives liveConversations
   useEffect(() => {
@@ -265,9 +294,12 @@ export default function ChatInterface() {
         liveConv.landlordUid === user?.uid
           ? liveConv.tenantUid
           : liveConv.landlordUid;
+      const partnerProfile = partnerUid ? partnerProfiles[partnerUid] : null;
       const partnerName =
-        (partnerUid && partnerProfiles[partnerUid]?.name) ||
+        partnerProfile?.name ||
         (isUserLandlord ? 'Tenant' : 'Landlord');
+
+      const isOnline = isUserOnline(partnerProfile?.lastActive);
 
       let timeStr = 'Just now';
       if (liveConv.updatedAt?.toDate) {
@@ -279,16 +311,16 @@ export default function ChatInterface() {
       return {
         id: liveConv.conversationId || liveConv.id || '',
         isLive: true,
-        propertyId: liveConv.propertyId || 'prop-1',
+        propertyId: liveConv.propertyId || '',
         user: {
           name: partnerName,
           avatar:
-            (partnerUid && partnerProfiles[partnerUid]?.avatar) ||
+            partnerProfile?.avatar ||
             liveConv.propertyDetails?.imageUrl ||
-            'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
+            '',
           isVerified: true,
           role,
-          online: true,
+          online: isOnline,
         },
         propertyTitle: liveConv.propertyDetails?.title || 'Rental Property Inquiry',
         propertyPrice: liveConv.propertyDetails?.rentAmount
@@ -472,8 +504,8 @@ export default function ChatInterface() {
     if (activeChatId.startsWith('draft_') || (draftConversation && activeChatId === draftConversation.id)) {
       setIsSending(true);
       try {
-        const targetPropId = newPropertyId || draftConversation?.propertyId || 'prop-1';
-        const targetLandlordUid = landlordUid || 'landlord_demo_host';
+        const targetPropId = newPropertyId || draftConversation?.propertyId || '';
+        const targetLandlordUid = landlordUid || '';
         const propSummary: PropertySummary = {
           propertyId: targetPropId,
           title: draftConversation?.propertyTitle || 'Property Inquiry',
@@ -539,6 +571,19 @@ export default function ChatInterface() {
     }
   };
 
+  const handleDeleteMessage = async (msgId: string, imageUrl?: string) => {
+    if (!activeChatId || !msgId) return;
+    const confirmDelete = window.confirm('Are you sure you want to delete this message?');
+    if (!confirmDelete) return;
+
+    try {
+      await deleteMessage(activeChatId, msgId, imageUrl);
+    } catch (err: any) {
+      console.error('Failed to delete message:', err);
+      alert('Failed to delete message. Please try again.');
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-3 sm:py-6">
       {/* Outer Card Container */}
@@ -590,7 +635,37 @@ export default function ChatInterface() {
 
             {/* Conversation Items List */}
             <div className="flex-1 overflow-y-auto divide-y divide-slate-100 scrollbar-thin">
-              {filteredConversations.length > 0 ? (
+              {!user ? (
+                <div className="p-6 text-center space-y-3">
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 mx-auto flex items-center justify-center">
+                    <Lock className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-sm font-bold text-slate-800">Sign in to view messages</h3>
+                  <p className="text-xs text-slate-500">
+                    Connect with landlords, schedule visits, and view rental inquiries.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => openAuthModal && openAuthModal('signin')}
+                    className="w-full py-2 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-sm transition-all"
+                  >
+                    Sign In
+                  </button>
+                </div>
+              ) : !isConversationsLoaded ? (
+                <div className="p-4 space-y-3">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="flex items-center gap-3 p-2 animate-pulse">
+                      <div className="w-12 h-12 rounded-2xl bg-slate-200 shrink-0" />
+                      <div className="flex-1 space-y-2">
+                        <div className="h-3.5 bg-slate-200 rounded w-28" />
+                        <div className="h-2.5 bg-slate-200 rounded w-40" />
+                        <div className="h-2 bg-slate-200 rounded w-20" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : filteredConversations.length > 0 ? (
                 filteredConversations.map((conv) => {
                   const isSelected = conv.id === activeChatId;
                   return (
@@ -606,13 +681,21 @@ export default function ChatInterface() {
                     >
                       {/* Avatar with Online Dot */}
                       <div className="relative shrink-0">
-                        <img
-                          src={conv.user.avatar}
-                          alt={conv.user.name}
-                          className="w-12 h-12 rounded-2xl object-cover border border-slate-200"
-                        />
-                        {conv.user.online && (
-                          <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-white rounded-full" />
+                        {conv.user.avatar ? (
+                          <img
+                            src={conv.user.avatar}
+                            alt={conv.user.name}
+                            className="w-12 h-12 rounded-2xl object-cover border border-slate-200"
+                          />
+                        ) : (
+                          <div className="w-12 h-12 rounded-2xl bg-emerald-700 text-white font-bold text-lg flex items-center justify-center border border-slate-200">
+                            {(conv.user.name || 'U').charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                        {conv.user.online ? (
+                          <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-white rounded-full" title="Online" />
+                        ) : (
+                          <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-slate-400 border-2 border-white rounded-full" title="Offline" />
                         )}
                       </div>
 
@@ -666,9 +749,32 @@ export default function ChatInterface() {
                     </button>
                   );
                 })
+              ) : searchQuery ? (
+                <div className="p-8 text-center space-y-2">
+                  <p className="text-xs text-slate-500">No conversations match &quot;{searchQuery}&quot;</p>
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="text-xs font-semibold text-emerald-600 hover:text-emerald-700"
+                  >
+                    Clear Search
+                  </button>
+                </div>
               ) : (
-                <div className="p-8 text-center text-xs text-slate-400">
-                  No conversations match your search.
+                <div className="p-8 text-center space-y-3">
+                  <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 mx-auto flex items-center justify-center">
+                    <Building2 className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-sm font-semibold text-slate-700">No conversations yet</h3>
+                  <p className="text-xs text-slate-400 max-w-[220px] mx-auto">
+                    When you contact a landlord or receive rental inquiries, they will appear here.
+                  </p>
+                  <Link
+                    to="/search"
+                    className="inline-block py-1.5 px-3 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-xs font-medium transition-colors"
+                  >
+                    Explore Listings
+                  </Link>
                 </div>
               )}
             </div>
@@ -708,13 +814,27 @@ export default function ChatInterface() {
 
                     {/* Landlord Avatar with verified indicator */}
                     <div className="relative shrink-0">
-                      <img
-                        src={activeConversation.user.avatar}
-                        alt={activeConversation.user.name}
-                        className="w-10 h-10 rounded-xl object-cover border border-slate-200"
-                      />
-                      {activeConversation.user.online && (
-                        <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full" />
+                      {activeConversation.user.avatar ? (
+                        <img
+                          src={activeConversation.user.avatar}
+                          alt={activeConversation.user.name}
+                          className="w-10 h-10 rounded-xl object-cover border border-slate-200"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-xl bg-emerald-700 text-white font-bold text-sm flex items-center justify-center border border-slate-200">
+                          {(activeConversation.user.name || 'U').charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      {activeConversation.user.online ? (
+                        <span
+                          className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full"
+                          title="Online"
+                        />
+                      ) : (
+                        <span
+                          className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-slate-400 border-2 border-white rounded-full"
+                          title="Offline"
+                        />
                       )}
                     </div>
 
@@ -747,7 +867,7 @@ export default function ChatInterface() {
                             activeConversation.user.online ? 'bg-emerald-500' : 'bg-slate-400'
                           }`}
                         />
-                        <span>{activeConversation.user.online ? 'Online now' : 'Active today'}</span>
+                        <span>{activeConversation.user.online ? 'Online' : 'Offline'}</span>
                         <span className="text-slate-300">•</span>
                         <span className="truncate text-slate-600 font-medium">
                           {activeConversation.propertyLocation}
@@ -759,7 +879,7 @@ export default function ChatInterface() {
                   {/* Right Header Action: Property Pill */}
                   <div className="flex items-center gap-2">
                     <Link
-                      to={`/property/${activeConversation.propertyId || 'prop-1'}`}
+                      to={`/property/${activeConversation.propertyId || ''}`}
                       className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-xs font-medium text-slate-700 transition-colors"
                     >
                       <Building2 className="w-3.5 h-3.5 text-emerald-600" />
@@ -855,7 +975,7 @@ export default function ChatInterface() {
                 <div className="px-4 py-2.5 bg-amber-50/95 border-b border-amber-200/80 flex items-center gap-2.5 text-xs text-amber-900 shadow-2xs">
                   <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0" />
                   <p className="leading-snug text-[11px] sm:text-xs">
-                    For your security, NEVER send advance money or booking fees before physically visiting the property. Do not share OTPs. Keep all communication within Thikana.
+                    For your security, NEVER send advance money or booking fees before physically visiting the property. Do not share OTPs. Keep all communication within Bhara Hobe.
                   </p>
                 </div>
 
@@ -874,10 +994,10 @@ export default function ChatInterface() {
                   <div className="max-w-md mx-auto my-2 text-center p-3 rounded-2xl bg-white/90 border border-slate-200 shadow-xs space-y-1">
                     <div className="flex items-center justify-center gap-1.5 text-xs font-semibold text-slate-700">
                       <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                      <span>Thikana Trust & Privacy Shield</span>
+                      <span>Bhara Hobe Trust & Privacy Shield</span>
                     </div>
                     <p className="text-[11px] text-slate-500 leading-relaxed">
-                      Keep personal contact info and advance transactions within Thikana to stay protected from rental scams.
+                      Keep personal contact info and advance transactions within Bhara Hobe to stay protected from rental scams.
                     </p>
                   </div>
 
@@ -925,7 +1045,7 @@ export default function ChatInterface() {
 
                           {/* Timestamp and Delivery/Read Status Receipts */}
                           <div
-                            className={`flex items-center justify-end gap-1 text-[10px] ${
+                            className={`flex items-center justify-end gap-1.5 text-[10px] ${
                               isMe ? 'text-blue-100' : 'text-slate-400'
                             }`}
                           >
@@ -949,6 +1069,17 @@ export default function ChatInterface() {
                                   <Check className="w-3.5 h-3.5 text-blue-200/75" />
                                 )}
                               </span>
+                            )}
+                            {isMe && isLiveChat && (
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteMessage(msg.id, msg.imageUrl)}
+                                className="p-0.5 ml-1 rounded hover:bg-white/20 text-blue-200 hover:text-white transition-colors cursor-pointer"
+                                title="Delete message"
+                                aria-label="Delete message"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
                             )}
                           </div>
                         </div>

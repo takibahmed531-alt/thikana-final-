@@ -1,12 +1,20 @@
+import { useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import TopNav from './TopNav';
 import BottomTab from './BottomTab';
 import Footer from './Footer';
 import AuthModal from './AuthModal';
 import { useAuth } from '../context/AuthContext';
+import { updateUserLastActive } from '../services/authService';
 
 export default function GlobalLayout() {
-  const { isAuthModalOpen, closeAuthModal, authModalMode } = useAuth();
+  const { user, isAuthModalOpen, closeAuthModal, authModalMode } = useAuth();
+
+  // Event-driven presence: update lastActive only upon initial app mount / authentication
+  useEffect(() => {
+    if (!user?.uid) return;
+    updateUserLastActive(user.uid);
+  }, [user?.uid]);
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 transition-colors duration-300 antialiased selection:bg-emerald-100 selection:text-emerald-900 dark:selection:bg-emerald-950 dark:selection:text-emerald-200">

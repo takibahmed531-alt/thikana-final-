@@ -21,7 +21,10 @@ import {
 import {
   doc,
   getDoc,
+  setDoc,
+  updateDoc,
   writeBatch,
+  serverTimestamp,
 } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { AdditionalUserData, PublicProfile, PrivateUser, UserRole } from '../types';
@@ -30,14 +33,14 @@ import { handleFirestoreError, OperationType } from './firestoreErrors';
 /**
  * Task 2: Helper function to format email or phone identifier.
  * If the identifier contains only numbers (or starts with '+'),
- * appends '@thikana.app' to use it as a pseudo-email for OTP-less phone authentication.
+ * appends '@bharahobe.app' to use it as a pseudo-email for OTP-less phone authentication.
  * Otherwise, returns the email as is.
  */
 export function formatIdentifier(identifier: string): string {
   const trimmed = (identifier || '').trim();
   const cleaned = trimmed.replace(/[\s-]/g, '');
   if (cleaned.startsWith('+') || /^\d+$/.test(cleaned)) {
-    return `${cleaned}@thikana.app`;
+    return `${cleaned}@bharahobe.app`;
   }
   return trimmed;
 }
@@ -68,9 +71,9 @@ export async function signUpWithEmailOrPhone(
       displayName: name.trim(),
     });
 
-    // Check if the original identifier is a real email (and not a phone number pseudo-email ending in '@thikana.app')
+    // Check if the original identifier is a real email (and not a phone number pseudo-email)
     const trimmed = (identifier || '').trim();
-    const isPseudoEmail = formattedEmail.endsWith('@thikana.app') || trimmed.endsWith('@thikana.app');
+    const isPseudoEmail = formattedEmail.endsWith('@bharahobe.app') || formattedEmail.endsWith('@thikana.app') || trimmed.endsWith('@bharahobe.app') || trimmed.endsWith('@thikana.app');
     const isEmailAddress = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
 
     if (isEmailAddress && !isPseudoEmail) {
@@ -405,3 +408,22 @@ export async function saveNewUserToDatabase(
     throw error;
   }
 }
+
+/**
+ * Updates the user's lastActive timestamp in their publicProfile document.
+ * This is event-driven to avoid continuous timer polling and Firestore quota drain.
+ */
+export async function updateUserLastActive(uid: string): Promise<void> {
+  if (!uid || !uid.trim()) return;
+  try {
+    const userProfileRef = doc(db, 'publicProfiles', uid.trim());
+    await updateDoc(userProfileRef, {
+      lastActive: serverTimestamp(),
+    }).catch(async () => {
+      await setDoc(userProfileRef, { lastActive: serverTimestamp() }, { merge: true }).catch(() => {});
+    });
+  } catch (err) {
+    console.warn('Could not update user lastActive timestamp:', err);
+  }
+}
+

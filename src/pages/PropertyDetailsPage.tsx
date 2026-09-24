@@ -41,9 +41,75 @@ import {
 import MapComponent from '../components/MapComponent';
 import NeighborhoodGuide from '../components/NeighborhoodGuide';
 import ReportModal from '../components/ReportModal';
+import { formatTimeAgo } from '../utils/timeUtils';
+
+const propertyDetailsCache: Record<string, any> = {};
+
+function formatPropertyData(p: any) {
+  const imgs =
+    p.images && p.images.length > 0
+      ? p.images
+      : p.imageUrls && p.imageUrls.length > 0
+      ? p.imageUrls
+      : [];
+
+  const mappedAmenities = (p.amenities || []).map((name: string) => ({
+    name,
+    icon: Wifi,
+    available: true,
+  }));
+
+  return {
+    id: p.propertyId || p.id,
+    landlordUid: p.landlordUid,
+    adId: p.adId,
+    title: p.title,
+    rentAmount: p.rentAmount,
+    depositAmount: p.rentAmount * 2,
+    location: p.location,
+    coordinates:
+      Array.isArray(p.coordinates) &&
+      p.coordinates.length === 2 &&
+      typeof p.coordinates[0] === 'number' &&
+      typeof p.coordinates[1] === 'number'
+        ? (p.coordinates as [number, number])
+        : [23.7465, 90.376],
+    category: p.category,
+    status: p.status || 'available',
+    genderPreference: p.genderPreference,
+    availableSeats: p.availableSeats,
+    isVerified: true,
+    availableFrom: p.availableFrom || 'Available Now',
+    utilityTerms: p.utilityTerms || 'Bills Excluded',
+    floor: p.floor,
+    bedrooms: p.bedrooms,
+    bathrooms: p.bathrooms,
+    areaSqft: p.areaSqft,
+    postedTime: p.createdAt ? formatTimeAgo(p.createdAt) : 'Recently posted',
+    description: `A newly published rental listing located at ${p.location}. Verified through Bhara Hobe real estate portal.`,
+    images: imgs,
+    amenities:
+      mappedAmenities.length > 0
+        ? mappedAmenities
+        : [
+            { name: 'High-Speed WiFi Ready', icon: Wifi, available: true },
+            { name: 'Dual Passenger Lift', icon: Building, available: true },
+            { name: '24/7 CCTV & Security Guard', icon: Shield, available: true },
+          ],
+    landlord: {
+      name: 'Property Landlord',
+      avatar: '',
+      isVerified: true,
+      memberSince: '2025',
+      responseRate: '100% Response Rate',
+      responseTime: 'Replies quickly',
+      totalListings: 1,
+    },
+  };
+}
 
 export default function PropertyDetailsPage() {
-  const { t } = useLanguage();
+  const { t, translateCategory, translateGender } = useLanguage();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user, openAuthModal } = useAuth();
@@ -59,75 +125,22 @@ export default function PropertyDetailsPage() {
   const [firestoreProperty, setFirestoreProperty] = useState<any>(null);
 
   useEffect(() => {
-    if (id) {
-      getPropertyById(id)
-        .then((res) => {
-          if (res.success && res.property) {
-            const p = res.property;
-            const imgs =
-              p.images && p.images.length > 0
-                ? p.images
-                : p.imageUrls && p.imageUrls.length > 0
-                ? p.imageUrls
-                : ['https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=1200&q=80'];
+    if (!id) return;
 
-            const mappedAmenities = (p.amenities || []).map((name: string) => ({
-              name,
-              icon: Wifi,
-              available: true,
-            }));
-
-            setFirestoreProperty({
-              id: p.propertyId,
-              landlordUid: p.landlordUid,
-              adId: p.adId,
-              title: p.title,
-              rentAmount: p.rentAmount,
-              depositAmount: p.rentAmount * 2,
-              location: p.location,
-              coordinates:
-                Array.isArray(p.coordinates) &&
-                p.coordinates.length === 2 &&
-                typeof p.coordinates[0] === 'number' &&
-                typeof p.coordinates[1] === 'number'
-                  ? (p.coordinates as [number, number])
-                  : [23.7465, 90.376],
-              category: p.category,
-              status: p.status || 'available',
-              genderPreference: p.genderPreference,
-              availableSeats: p.availableSeats,
-              isVerified: true,
-              availableFrom: 'Available Now',
-              floor: p.floor,
-              bedrooms: p.bedrooms,
-              bathrooms: p.bathrooms,
-              areaSqft: p.areaSqft,
-              postedTime: 'Recently posted',
-              description: `A newly published rental listing located at ${p.location}. Verified through Thikana real estate portal.`,
-              images: imgs,
-              amenities:
-                mappedAmenities.length > 0
-                  ? mappedAmenities
-                  : [
-                      { name: 'High-Speed WiFi Ready', icon: Wifi, available: true },
-                      { name: 'Dual Passenger Lift', icon: Building, available: true },
-                      { name: '24/7 CCTV & Security Guard', icon: Shield, available: true },
-                    ],
-              landlord: {
-                name: 'Property Landlord',
-                avatar:
-                  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
-                isVerified: true,
-                memberSince: '2025',
-                responseRate: '100% Response Rate',
-                responseTime: 'Replies quickly',
-                totalListings: 1,
-              },
-            });
-          }
-        })
-        .catch(console.warn);
+    if (propertyDetailsCache[id]) {
+      setFirestoreProperty(propertyDetailsCache[id]);
+      return;
     }
+
+    getPropertyById(id)
+      .then((res) => {
+        if (res.success && res.property) {
+          const formatted = formatPropertyData(res.property);
+          propertyDetailsCache[id] = formatted;
+          setFirestoreProperty(formatted);
+        }
+      })
+      .catch(console.warn);
   }, [id]);
 
   const property = firestoreProperty;
@@ -166,7 +179,8 @@ export default function PropertyDetailsPage() {
     if (!confirmed) return;
     setIsDeleting(true);
     try {
-      await deletePropertyListing(property.id);
+      await deletePropertyListing(property.id, property.images || property.imageUrls || []);
+      delete propertyDetailsCache[property.id];
       alert('Property deleted successfully!');
       navigate('/profile');
     } catch (err: any) {
@@ -188,13 +202,13 @@ export default function PropertyDetailsPage() {
 
     setIsSendingMsg(true);
     try {
-      const targetLandlordUid = property?.landlordUid || 'landlord_demo_host';
+      const targetLandlordUid = property?.landlordUid || '';
       await startConversationAndSendMessage(
         user.uid,
         targetLandlordUid,
-        property?.id || id || 'prop-1',
+        property?.id || id || '',
         {
-          propertyId: property?.id || id || 'prop-1',
+          propertyId: property?.id || id || '',
           title: property?.title || 'Rental Property',
           rentAmount: property?.rentAmount || 0,
           location: property?.location || '',
@@ -331,38 +345,39 @@ export default function PropertyDetailsPage() {
         <div className="hidden lg:grid grid-cols-12 gap-4 h-[440px]">
           {/* Main Large Image (approx 66% width / 8 cols) */}
           <div className="col-span-8 h-full rounded-2xl overflow-hidden border border-slate-200 shadow-sm relative group cursor-pointer">
-            <img
-              src={property.images[selectedImageIndex] || property.images[0]}
-              alt={property.title}
-              className={`w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500 ease-out ${
-                property.status === 'rented' ? 'grayscale opacity-80' : ''
-              }`}
-            />
+            {property.images.length > 0 ? (
+              <img
+                src={property.images[selectedImageIndex] || property.images[0]}
+                alt={property.title}
+                className={`w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500 ease-out ${
+                  property.status === 'rented' ? 'grayscale opacity-80' : ''
+                }`}
+              />
+            ) : (
+              <div className="w-full h-full flex flex-col items-center justify-center bg-slate-200 text-slate-400">
+                <span className="text-base font-semibold">{t('noPhotosAvailable')}</span>
+              </div>
+            )}
             <div className="absolute top-4 left-4 flex items-center gap-2 flex-wrap">
               <span className="px-3 py-1 rounded-xl bg-slate-900/80 backdrop-blur-md text-white text-xs font-semibold">
-                {property.category}
+                {translateCategory(property.category)}
               </span>
-              {id?.startsWith('prop-') && (
-                <span className="px-3 py-1 rounded-xl bg-amber-500/95 text-white text-xs font-bold">
-                  DEMO
-                </span>
-              )}
               {property.status === 'rented' && (
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-rose-600/95 backdrop-blur-md text-white text-xs font-bold shadow-sm">
                   <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
-                  Rented Out
+                  {t('rentedOut')}
                 </span>
               )}
               {property.isVerified && (
                 <span className="inline-flex items-center gap-1 px-3 py-1 rounded-xl bg-emerald-600/90 backdrop-blur-md text-white text-xs font-medium">
                   <BadgeCheck className="w-3.5 h-3.5 text-white" />
-                  Verified Listing
+                  {t('verifiedListing')}
                 </span>
               )}
             </div>
             <div className="absolute bottom-4 right-4 px-3 py-1.5 rounded-xl bg-black/60 backdrop-blur-md text-white text-xs font-medium flex items-center gap-1.5">
               <Camera className="w-4 h-4" />
-              <span>{property.images.length} High-Res Photos</span>
+              <span>{property.images.length} {t('highResPhotos')}</span>
             </div>
           </div>
 
@@ -407,7 +422,7 @@ export default function PropertyDetailsPage() {
           <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-2">
               <span className="px-3 py-1 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-semibold border border-emerald-200">
-                {property.category}
+                {translateCategory(property.category)}
               </span>
 
               {/* Rent Status Badge */}
@@ -423,7 +438,7 @@ export default function PropertyDetailsPage() {
                     property.status === 'rented' ? 'bg-rose-500' : 'bg-emerald-500'
                   }`}
                 />
-                {property.status === 'rented' ? 'Rented Out' : 'Available for Rent'}
+                {property.status === 'rented' ? t('rentedOut') : t('availableForRent')}
               </span>
 
               {/* Gender Preference Badge */}
@@ -431,7 +446,7 @@ export default function PropertyDetailsPage() {
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-50 text-slate-700 text-xs font-medium border border-slate-200">
                   <Users className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                   <span>
-                    Gender: <strong className="font-semibold text-slate-900">{property.genderPreference}</strong>
+                    {t('gender')}: <strong className="font-semibold text-slate-900">{translateGender(property.genderPreference)}</strong>
                   </span>
                 </span>
               )}
@@ -442,7 +457,7 @@ export default function PropertyDetailsPage() {
                   <User className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                   <span>
                     <strong className="font-semibold">{property.availableSeats}</strong>{' '}
-                    {property.availableSeats === 1 ? 'Seat' : 'Seats'} Available
+                    {property.availableSeats === 1 ? t('seat') : t('seats')} {t('available')}
                   </span>
                 </span>
               )}
@@ -450,19 +465,19 @@ export default function PropertyDetailsPage() {
               {/* Prominently styled Ad ID Badge with Copy action */}
               {effectiveAdId && (
                 <div className="inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-lg bg-slate-900 text-white text-xs font-medium shadow-xs border border-slate-800">
-                  <span className="text-[10px] uppercase font-bold text-slate-400">Ad ID:</span>
+                  <span className="text-[10px] uppercase font-bold text-slate-400">{t('adId')}:</span>
                   <span className="font-mono font-bold text-amber-300 tracking-wide">{effectiveAdId}</span>
                   <button
                     type="button"
                     onClick={handleCopyAdId}
                     className="p-1 rounded hover:bg-slate-800 text-slate-300 hover:text-white transition-colors cursor-pointer inline-flex items-center gap-1 active:scale-95"
-                    title={copiedAdId ? 'Copied to clipboard!' : 'Copy Ad ID'}
-                    aria-label="Copy Ad ID"
+                    title={copiedAdId ? t('copied') : t('copyAdId')}
+                    aria-label={t('copyAdId')}
                   >
                     {copiedAdId ? (
                       <>
                         <Check className="w-3.5 h-3.5 text-emerald-400" />
-                        <span className="text-[10px] font-sans font-bold text-emerald-400">Copied</span>
+                        <span className="text-[10px] font-sans font-bold text-emerald-400">{t('copied')}</span>
                       </>
                     ) : (
                       <Copy className="w-3.5 h-3.5 text-slate-300 hover:text-white" />
@@ -472,10 +487,12 @@ export default function PropertyDetailsPage() {
               )}
 
               <span className="text-xs text-slate-500 font-medium flex items-center gap-1">
-                <Calendar className="w-3.5 h-3.5" />
-                Available: {property.availableFrom}
+                <Calendar className="w-3.5 h-3.5 text-emerald-600" />
+                <span>
+                  {t('available')}: <strong className="font-semibold text-slate-900">{property.availableFrom}</strong>
+                </span>
               </span>
-              <span className="text-xs text-slate-400">• Posted {property.postedTime}</span>
+              <span className="text-xs text-slate-400">• {t('posted')} {property.postedTime}</span>
             </div>
 
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 pt-1">
@@ -487,20 +504,20 @@ export default function PropertyDetailsPage() {
               {effectiveAdId && (
                 <div className="shrink-0 inline-flex items-center gap-2 self-start px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200/90 shadow-xs">
                   <div className="flex flex-col text-left sm:text-right">
-                    <span className="text-[10px] uppercase font-bold tracking-wider text-slate-500">Listing ID</span>
+                    <span className="text-[10px] uppercase font-bold tracking-wider text-slate-500">{t('listingId')}</span>
                     <span className="font-mono font-bold text-xs sm:text-sm text-slate-900 tracking-wide">{effectiveAdId}</span>
                   </div>
                   <button
                     type="button"
                     onClick={handleCopyAdId}
                     className="p-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 text-slate-600 hover:text-slate-900 transition-all cursor-pointer shadow-xs active:scale-95 flex items-center gap-1"
-                    title={copiedAdId ? 'Copied to clipboard!' : 'Copy Listing ID'}
-                    aria-label="Copy Listing ID"
+                    title={copiedAdId ? t('copied') : t('copyAdId')}
+                    aria-label={t('copyAdId')}
                   >
                     {copiedAdId ? (
                       <>
                         <Check className="w-4 h-4 text-emerald-600" />
-                        <span className="text-xs font-semibold text-emerald-600">Copied</span>
+                        <span className="text-xs font-semibold text-emerald-600">{t('copied')}</span>
                       </>
                     ) : (
                       <Copy className="w-4 h-4" />
@@ -519,10 +536,10 @@ export default function PropertyDetailsPage() {
             <div className="lg:hidden p-4 rounded-2xl bg-emerald-50/60 border border-emerald-100 flex items-baseline justify-between">
               <div>
                 <span className="text-2xl font-bold text-slate-900">৳{formattedRent}</span>
-                <span className="text-xs text-slate-500 ml-1">/ month</span>
+                <span className="text-xs text-slate-500 ml-1">{t('perMonth')}</span>
               </div>
               <span className="text-xs font-semibold text-emerald-800 bg-white px-2.5 py-1 rounded-lg border border-emerald-200">
-                Advance: ৳{formattedDeposit}
+                {t('advance')}: ৳{formattedDeposit}
               </span>
             </div>
           </div>
@@ -534,8 +551,8 @@ export default function PropertyDetailsPage() {
                 <BedDouble className="w-5 h-5 text-emerald-600" />
               </div>
               <div>
-                <p className="text-xs text-slate-500">Bedrooms</p>
-                <p className="text-sm font-bold text-slate-900">{property.bedrooms} Beds</p>
+                <p className="text-xs text-slate-500">{t('bedrooms')}</p>
+                <p className="text-sm font-bold text-slate-900">{property.bedrooms} {t('beds')}</p>
               </div>
             </div>
 
@@ -544,8 +561,8 @@ export default function PropertyDetailsPage() {
                 <Bath className="w-5 h-5 text-emerald-600" />
               </div>
               <div>
-                <p className="text-xs text-slate-500">Bathrooms</p>
-                <p className="text-sm font-bold text-slate-900">{property.bathrooms} Baths</p>
+                <p className="text-xs text-slate-500">{t('bathrooms')}</p>
+                <p className="text-sm font-bold text-slate-900">{property.bathrooms} {t('baths')}</p>
               </div>
             </div>
 
@@ -554,8 +571,8 @@ export default function PropertyDetailsPage() {
                 <Maximize2 className="w-5 h-5 text-emerald-600" />
               </div>
               <div>
-                <p className="text-xs text-slate-500">Unit Size</p>
-                <p className="text-sm font-bold text-slate-900">{property.areaSqft} sqft</p>
+                <p className="text-xs text-slate-500">{t('unitSize')}</p>
+                <p className="text-sm font-bold text-slate-900">{property.areaSqft} {t('sqft')}</p>
               </div>
             </div>
 
@@ -564,7 +581,7 @@ export default function PropertyDetailsPage() {
                 <Layers className="w-5 h-5 text-emerald-600" />
               </div>
               <div>
-                <p className="text-xs text-slate-500">Floor Level</p>
+                <p className="text-xs text-slate-500">{t('floorLevel')}</p>
                 <p className="text-sm font-bold text-slate-900 truncate">{property.floor}</p>
               </div>
             </div>
@@ -606,7 +623,7 @@ export default function PropertyDetailsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-bold text-slate-900">{t('locationNeighborhood')}</h2>
-                <p className="text-xs text-slate-500">Precise location pin with interactive map navigation</p>
+                <p className="text-xs text-slate-500">{t('interactiveMapDesc')}</p>
               </div>
               <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
                 Leaflet OpenStreetMap
@@ -624,6 +641,8 @@ export default function PropertyDetailsPage() {
               }
               locationName={property.location || 'Dhaka, Bangladesh'}
               propertyTitle={property.title || 'Rental Property'}
+              rentAmount={property.rentAmount}
+              category={translateCategory(property.category)}
             />
 
             {/* Smart AI Neighborhood Guide */}
@@ -642,10 +661,10 @@ export default function PropertyDetailsPage() {
             <div className="flex items-baseline justify-between border-b border-slate-100 pb-4">
               <div>
                 <span className="text-3xl font-black text-slate-900">৳{formattedRent}</span>
-                <span className="text-xs font-medium text-slate-500 ml-1.5">/ month</span>
+                <span className="text-xs font-medium text-slate-500 ml-1.5">{t('perMonth')}</span>
               </div>
               <span className="text-xs font-semibold text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
-                Direct Landlord
+                {t('directLandlord')}
               </span>
             </div>
 
@@ -655,12 +674,12 @@ export default function PropertyDetailsPage() {
                 <span className="font-semibold text-slate-800">৳{formattedDeposit}</span>
               </div>
               <div className="flex justify-between py-1">
-                <span className="text-slate-500">Service & Gas Charge:</span>
-                <span className="font-semibold text-slate-800">Included</span>
+                <span className="text-slate-500">{t('serviceGasCharge')}:</span>
+                <span className="font-semibold text-slate-800 text-right max-w-[60%]">{property.utilityTerms}</span>
               </div>
               <div className="flex justify-between py-1">
                 <span className="text-slate-500">{t('minimumLease')}:</span>
-                <span className="font-semibold text-slate-800">6 Months</span>
+                <span className="font-semibold text-slate-800">{t('sixMonths')}</span>
               </div>
             </div>
           </div>
@@ -672,11 +691,17 @@ export default function PropertyDetailsPage() {
             {/* Landlord Header */}
             <div className="flex items-center gap-4">
               <div className="relative">
-                <img
-                  src={property.landlord.avatar}
-                  alt={property.landlord.name}
-                  className="w-16 h-16 rounded-2xl object-cover border-2 border-emerald-100 shadow-sm"
-                />
+                {property.landlord.avatar ? (
+                  <img
+                    src={property.landlord.avatar}
+                    alt={property.landlord.name}
+                    className="w-16 h-16 rounded-2xl object-cover border-2 border-emerald-100 shadow-sm"
+                  />
+                ) : (
+                  <div className="w-16 h-16 rounded-2xl bg-emerald-700 text-white font-bold text-xl flex items-center justify-center border-2 border-emerald-100 shadow-sm">
+                    {property.landlord.name.charAt(0).toUpperCase()}
+                  </div>
+                )}
                 {property.landlord.isVerified && (
                   <span className="absolute -bottom-1 -right-1 bg-emerald-600 text-white p-1 rounded-full shadow-sm">
                     <BadgeCheck className="w-3.5 h-3.5" />
@@ -691,9 +716,9 @@ export default function PropertyDetailsPage() {
                     <BadgeCheck className="w-4 h-4 text-emerald-600 shrink-0" />
                   )}
                 </div>
-                <p className="text-xs text-slate-500">Property Owner & Host</p>
+                <p className="text-xs text-slate-500">{t('propertyOwnerHost')}</p>
                 <div className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">
-                  <span>Verified Identity (NID)</span>
+                  <span>{t('verifiedIdentityNid')}</span>
                 </div>
               </div>
             </div>
@@ -705,8 +730,8 @@ export default function PropertyDetailsPage() {
                 <p className="text-[10px] text-slate-500 mt-0.5">{property.landlord.responseTime}</p>
               </div>
               <div className="border-l border-slate-200">
-                <p className="text-xs font-bold text-slate-800">{property.landlord.totalListings} Active Listings</p>
-                <p className="text-[10px] text-slate-500 mt-0.5">Member since {property.landlord.memberSince}</p>
+                <p className="text-xs font-bold text-slate-800">{property.landlord.totalListings} {t('activeListings')}</p>
+                <p className="text-[10px] text-slate-500 mt-0.5">{t('memberSince')} {property.landlord.memberSince}</p>
               </div>
             </div>
 
@@ -714,7 +739,7 @@ export default function PropertyDetailsPage() {
             <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-start gap-2.5">
               <Lock className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
               <p className="text-[11px] text-slate-600 leading-relaxed">
-                <strong className="text-slate-800">Privacy Safeguard:</strong> Phone numbers are kept confidential to prevent spam. Use Thikana's secure in-app messaging to negotiate and schedule physical visits.
+                <strong className="text-slate-800">{t('privacySafeguard')}:</strong> {t('privacySafeguardDesc')}
               </p>
             </div>
 
@@ -731,7 +756,7 @@ export default function PropertyDetailsPage() {
                 </button>
 
                 <Link
-                  to={`/messages?newPropertyId=${property?.id || id || 'prop-1'}&landlordUid=${property?.landlordUid || 'landlord_demo_host'}`}
+                  to={`/messages?newPropertyId=${property?.id || id || ''}&landlordUid=${property?.landlordUid || ''}`}
                   className="w-full flex items-center justify-center gap-2 px-6 py-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition-colors"
                 >
                   <span>{t('openFullMessenger')}</span>
@@ -760,7 +785,7 @@ export default function PropertyDetailsPage() {
       <ReportModal
         isOpen={isReportModalOpen}
         onClose={() => setIsReportModalOpen(false)}
-        targetId={property.id || id || 'prop-1'}
+        targetId={property.id || id || ''}
         targetType="property"
       />
 
@@ -773,11 +798,17 @@ export default function PropertyDetailsPage() {
             {/* Modal Header */}
             <div className="p-4 bg-slate-900 text-white flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <img
-                  src={property.landlord.avatar}
-                  alt={property.landlord.name}
-                  className="w-10 h-10 rounded-full object-cover border border-emerald-500"
-                />
+                {property.landlord.avatar ? (
+                  <img
+                    src={property.landlord.avatar}
+                    alt={property.landlord.name}
+                    className="w-10 h-10 rounded-full object-cover border border-emerald-500"
+                  />
+                ) : (
+                  <div className="w-10 h-10 rounded-full bg-emerald-700 text-white font-bold text-sm flex items-center justify-center border border-emerald-500">
+                    {property.landlord.name.charAt(0).toUpperCase()}
+                  </div>
+                )}
                 <div>
                   <h4 className="font-bold text-sm leading-tight flex items-center gap-1.5">
                     {property.landlord.name}
@@ -788,7 +819,7 @@ export default function PropertyDetailsPage() {
               </div>
               <div className="flex items-center gap-1">
                 <Link
-                  to={`/messages?newPropertyId=${property?.id || id || 'prop-1'}&landlordUid=${property?.landlordUid || 'landlord_demo_host'}`}
+                  to={`/messages?newPropertyId=${property?.id || id || ''}&landlordUid=${property?.landlordUid || ''}`}
                   className="p-1.5 rounded-full hover:bg-white/10 text-slate-300 hover:text-white transition-colors"
                   title="Expand to Full Messenger"
                 >

@@ -18,6 +18,7 @@ import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import FAQPage from './pages/FAQPage';
 import UserManualPage from './pages/UserManualPage';
 import SupportPage from './pages/SupportPage';
+import AboutPage from './pages/AboutPage';
 
 export default function App() {
   return (
@@ -34,6 +35,8 @@ export default function App() {
                 <Route path="saved" element={<SavedPage />} />
                 <Route path="post-ad" element={<PostAdPage />} />
                 <Route path="profile" element={<ProfilePage />} />
+                <Route path="about" element={<AboutPage />} />
+                <Route path="about-us" element={<Navigate to="/about" replace />} />
                 <Route path="privacy" element={<PrivacyPolicyPage />} />
                 <Route path="faq" element={<FAQPage />} />
                 <Route path="manual" element={<UserManualPage />} />

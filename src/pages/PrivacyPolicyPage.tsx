@@ -26,7 +26,7 @@ export default function PrivacyPolicyPage() {
           Privacy Policy & Data Security
         </h1>
         <p className="mt-3 text-sm sm:text-base text-slate-600 dark:text-slate-400 max-w-2xl leading-relaxed">
-          How Thikana protects your personal identity, rental agreements, and sensitive credentials with isolated Firestore cloud security.
+          How Bhara Hobe protects your personal identity, rental agreements, and sensitive credentials with isolated Firestore cloud security.
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-4 text-xs text-slate-500 dark:text-slate-400">
           <span>Effective Date: September 2026</span>
@@ -79,7 +79,7 @@ export default function PrivacyPolicyPage() {
             1. Dedicated Architecture: How NID & Phone Numbers Are Isolated
           </h2>
           <p>
-            Unlike traditional rental listing boards where user contact info and identification numbers are bundled into a single database record, Thikana implements an isolated <strong>Dual-Tier Security Architecture</strong> on Google Cloud Firestore:
+            Unlike traditional rental listing boards where user contact info and identification numbers are bundled into a single database record, Bhara Hobe implements an isolated <strong>Dual-Tier Security Architecture</strong> on Google Cloud Firestore:
           </p>
 
           <div className="p-4 sm:p-5 rounded-2xl bg-slate-900 text-slate-200 border border-slate-800 my-4 space-y-4">
@@ -127,14 +127,14 @@ export default function PrivacyPolicyPage() {
             2. Real Estate Rental Data & Property Listings
           </h2>
           <p>
-            When landlords, home owners, or sublet providers post a rental ad on Thikana:
+            When landlords, home owners, or sublet providers post a rental ad on Bhara Hobe:
           </p>
           <ul className="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-slate-600 dark:text-slate-300">
             <li>
               <strong>Property Location:</strong> The listing public view showcases the neighborhood, area, and general vicinity coordinates so tenants can explore nearby transit and amenities.
             </li>
             <li>
-              <strong>Landlord Direct Contact:</strong> Landlords can choose whether to display their verified contact phone number or require initial contact via Thikana&apos;s secured in-app chat.
+              <strong>Landlord Direct Contact:</strong> Landlords can choose whether to display their verified contact phone number or require initial contact via Bhara Hobe&apos;s secured in-app chat.
             </li>
             <li>
               <strong>Listing Ownership:</strong> Only the authenticated user whose <code className="font-mono">landlordUid</code> matches the listing can update, edit pricing, or toggle availability status.
@@ -149,7 +149,7 @@ export default function PrivacyPolicyPage() {
             3. In-App Messaging & Rental Negotiation Privacy
           </h2>
           <p>
-            Conversations conducted between tenants and property owners on Thikana are protected by strict participant-level access controls:
+            Conversations conducted between tenants and property owners on Bhara Hobe are protected by strict participant-level access controls:
           </p>
           <ul className="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-slate-600 dark:text-slate-300">
             <li>
@@ -159,7 +159,7 @@ export default function PrivacyPolicyPage() {
               All chat messages are timestamped and linked to specific property inquiries for auditability and spam prevention.
             </li>
             <li>
-              Thikana does not use your private chat messages for advertising or behavioral targeting.
+              Bhara Hobe does not use your private chat messages for advertising or behavioral targeting.
             </li>
           </ul>
         </section>
@@ -171,7 +171,7 @@ export default function PrivacyPolicyPage() {
             4. Fraud Prevention, Safety & Dispute Investigation
           </h2>
           <p>
-            To maintain a trustworthy marketplace free of fake listings and advance-fee scams, Thikana maintains a report handling pipeline:
+            To maintain a trustworthy marketplace free of fake listings and advance-fee scams, Bhara Hobe maintains a report handling pipeline:
           </p>
           <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300">
             When a property or user is reported for suspicious activity, our security review team inspects the reported listing and incident notes. Reported accounts may undergo mandatory identity verification before continuing to publish advertisements.
@@ -185,7 +185,7 @@ export default function PrivacyPolicyPage() {
             5. Your Data Rights & Deletion Requests
           </h2>
           <p>
-            You retain full ownership of your personal information on Thikana. You may:
+            You retain full ownership of your personal information on Bhara Hobe. You may:
           </p>
           <ul className="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-slate-600 dark:text-slate-300">
             <li>Review and update your profile and confidential phone numbers anytime from your Profile settings.</li>

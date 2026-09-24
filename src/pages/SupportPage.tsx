@@ -32,7 +32,7 @@ export default function SupportPage() {
 
   // Pre-fill email when authenticated user is loaded
   useEffect(() => {
-    if (user?.email && !user.email.endsWith('@thikana.app')) {
+    if (user?.email && !user.email.endsWith('@bharahobe.app') && !user.email.endsWith('@thikana.app')) {
       setEmail(user.email);
     }
   }, [user]);
@@ -94,7 +94,7 @@ export default function SupportPage() {
           Customer Care &amp; Help Desk
         </div>
         <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-          Thikana Support Center
+          Bhara Hobe Support Center
         </h1>
         <p className="mt-3 text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
           Need help with your property listing, account verification, or have a safety concern? Our team is here to assist.
@@ -361,10 +361,10 @@ export default function SupportPage() {
       <div className="mt-8 text-center text-xs text-slate-500 dark:text-slate-400">
         For immediate safety or fraud emergencies, email our Trust Desk at{' '}
         <a
-          href="mailto:support@thikana.app"
+          href="mailto:support@bharahobe.app"
           className="text-emerald-600 dark:text-emerald-400 font-semibold underline underline-offset-2"
         >
-          support@thikana.app
+          support@bharahobe.app
         </a>
       </div>
     </div>

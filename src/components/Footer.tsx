@@ -1,8 +1,11 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Building2, ShieldCheck, HelpCircle, Compass, LifeBuoy } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function Footer() {
+  const { t } = useLanguage();
+
   return (
     <footer className="w-full border-t border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 flex flex-col md:flex-row items-center justify-between gap-6">
@@ -13,10 +16,10 @@ export default function Footer() {
           </div>
           <div>
             <span className="font-bold text-base tracking-tight text-slate-900 dark:text-white">
-              Thikana<span className="text-emerald-600">.</span>
+              {t('brandName')}<span className="text-emerald-600">.</span>
             </span>
             <span className="block text-[11px] text-slate-500 dark:text-slate-400">
-              Trusted Rental Living in Bangladesh
+              {t('brandSlogan')}
             </span>
           </div>
         </div>
@@ -24,25 +27,32 @@ export default function Footer() {
         {/* Quick Links */}
         <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs font-semibold text-slate-600 dark:text-slate-400">
           <Link
+            to="/about"
+            className="flex items-center gap-1.5 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+          >
+            <Building2 className="w-3.5 h-3.5" />
+            <span>{t('aboutUs')}</span>
+          </Link>
+          <Link
             to="/faq"
             className="flex items-center gap-1.5 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
           >
             <HelpCircle className="w-3.5 h-3.5" />
-            <span>FAQ</span>
+            <span>{t('faq')}</span>
           </Link>
           <Link
             to="/manual"
             className="flex items-center gap-1.5 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
           >
             <Compass className="w-3.5 h-3.5" />
-            <span>User Manual</span>
+            <span>{t('userManual')}</span>
           </Link>
           <Link
             to="/privacy"
             className="flex items-center gap-1.5 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
           >
             <ShieldCheck className="w-3.5 h-3.5" />
-            <span>Privacy Policy</span>
+            <span>{t('privacyPolicy')}</span>
           </Link>
           <Link
             to="/support"
@@ -55,7 +65,7 @@ export default function Footer() {
 
         {/* Copyright */}
         <div className="text-[11px] text-slate-400 dark:text-slate-500 text-center md:text-right">
-          © {new Date().getFullYear()} Thikana Technologies. All rights reserved.
+          © {new Date().getFullYear()} Bhara Hobe Technologies. All rights reserved.
         </div>
       </div>
     </footer>

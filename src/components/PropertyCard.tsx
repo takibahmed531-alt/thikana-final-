@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { MapPin, BadgeCheck, Bookmark, BedDouble, Bath, Maximize2, Users, User, Briefcase } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
 
 export interface PropertyItem {
   id: string;
@@ -36,6 +37,7 @@ export default function PropertyCard({
   onSaveToggle,
   isSaved = false,
 }: PropertyCardProps) {
+  const { t, translateCategory, translateGender } = useLanguage();
   const [saved, setSaved] = useState(isSaved);
   const [imgError, setImgError] = useState(false);
 
@@ -71,30 +73,32 @@ export default function PropertyCard({
   return (
     <Link
       to={`/property/${property.id}`}
-      className="group bg-white rounded-2xl border border-slate-200/90 overflow-hidden shadow-sm hover:shadow-xl hover:border-slate-300 transition-all duration-300 flex flex-col hover:-translate-y-1 block relative"
+      className="group bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 overflow-hidden shadow-xs hover:shadow-xl hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-300 flex flex-col hover:-translate-y-1 block relative"
     >
       {/* Property Image Container */}
-      <div className="relative aspect-[16/10] w-full overflow-hidden bg-slate-100">
-        <img
-          src={
-            imgError || !property.imageUrl
-              ? 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80'
-              : property.imageUrl
-          }
-          alt={property.title}
-          onError={() => setImgError(true)}
-          className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out ${
-            isRented ? 'grayscale opacity-75' : ''
-          }`}
-          loading="lazy"
-        />
+      <div className="relative aspect-[16/10] w-full overflow-hidden bg-slate-100 dark:bg-slate-800">
+        {imgError || !property.imageUrl ? (
+          <div className="w-full h-full flex flex-col items-center justify-center bg-slate-200 dark:bg-slate-800 text-slate-400">
+            <span className="text-xs font-semibold">{t('noPhoto')}</span>
+          </div>
+        ) : (
+          <img
+            src={property.imageUrl}
+            alt={property.title}
+            onError={() => setImgError(true)}
+            className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out ${
+              isRented ? 'grayscale opacity-75' : ''
+            }`}
+            loading="lazy"
+          />
+        )}
 
         {/* Visual Overlay if Rented Out */}
         {isRented && (
           <div className="absolute inset-0 bg-slate-950/45 backdrop-blur-[1px] z-10 flex items-center justify-center pointer-events-none">
             <span className="px-3.5 py-1.5 rounded-xl bg-rose-600/95 text-white text-xs font-bold uppercase tracking-wider shadow-lg border border-white/30 backdrop-blur-md flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
-              Rented Out
+              {t('rentedOut')}
             </span>
           </div>
         )}
@@ -104,19 +108,19 @@ export default function PropertyCard({
 
         {/* Category Pill Tag & Status & Ad ID */}
         <div className="absolute top-3 left-3 right-14 flex items-center gap-1.5 z-20 flex-wrap">
-          <span className="px-2.5 py-1 rounded-lg bg-white/95 backdrop-blur-md text-[11px] font-semibold text-slate-800 shadow-sm border border-white/40">
-            {property.category}
+          <span className="px-2.5 py-1 rounded-lg bg-white/95 dark:bg-slate-900/90 backdrop-blur-md text-[11px] font-semibold text-slate-800 dark:text-slate-100 shadow-xs border border-white/40 dark:border-slate-700">
+            {translateCategory(property.category)}
           </span>
 
           {property.isDemo && (
-            <span className="px-2.5 py-1 rounded-lg bg-amber-500/95 text-white text-[11px] font-bold shadow-sm border border-amber-400">
+            <span className="px-2.5 py-1 rounded-lg bg-amber-500/95 text-white text-[11px] font-bold shadow-xs border border-amber-400">
               DEMO
             </span>
           )}
 
           {displayAdId && (
             <span
-              className="px-2 py-0.5 rounded-md bg-slate-950/70 backdrop-blur-md text-[10px] font-mono font-medium text-slate-200 border border-white/20 shadow-sm tracking-wide"
+              className="px-2 py-0.5 rounded-md bg-slate-950/70 backdrop-blur-md text-[10px] font-mono font-medium text-slate-200 border border-white/20 shadow-xs tracking-wide"
               title={`Property Ad ID: ${property.adId || property.id}`}
             >
               {displayAdId}
@@ -125,16 +129,16 @@ export default function PropertyCard({
 
           {/* Rented Out Pill Tag */}
           {isRented && (
-            <span className="px-2.5 py-1 rounded-lg bg-rose-600/95 backdrop-blur-md text-white text-[11px] font-bold shadow-sm border border-rose-500/40">
-              Rented Out
+            <span className="px-2.5 py-1 rounded-lg bg-rose-600/95 backdrop-blur-md text-white text-[11px] font-bold shadow-xs border border-rose-500/40">
+              {t('rentedOut')}
             </span>
           )}
 
           {/* Verified Badge */}
           {property.isVerified && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-600/95 backdrop-blur-md text-white text-[11px] font-medium shadow-sm border border-emerald-500/40">
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-600/95 backdrop-blur-md text-white text-[11px] font-medium shadow-xs border border-emerald-500/40">
               <BadgeCheck className="w-3.5 h-3.5 text-white shrink-0" />
-              <span>Verified</span>
+              <span>{t('verified')}</span>
             </span>
           )}
         </div>
@@ -159,12 +163,12 @@ export default function PropertyCard({
 
         {/* Rent Tag on image bottom */}
         <div className="absolute bottom-3 left-3 right-3 flex items-baseline justify-between z-20">
-          <div className="text-white drop-shadow-sm">
+          <div className="text-white drop-shadow-xs">
             <span className="text-xl font-bold tracking-tight">৳{formattedRent}</span>
-            <span className="text-xs font-medium text-slate-200 ml-1">/ month</span>
+            <span className="text-xs font-medium text-slate-200 ml-1">{t('perMonth')}</span>
           </div>
           {property.postedTime && (
-            <span className="text-[11px] text-slate-200/90 drop-shadow-sm">
+            <span className="text-[11px] text-slate-200/90 drop-shadow-xs">
               {property.postedTime}
             </span>
           )}
@@ -175,12 +179,12 @@ export default function PropertyCard({
       <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
         <div>
           {/* Title */}
-          <h3 className="font-semibold text-slate-900 text-base line-clamp-1 group-hover:text-emerald-700 transition-colors">
+          <h3 className="font-semibold text-slate-900 dark:text-white text-base line-clamp-1 group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors">
             {property.title}
           </h3>
 
           {/* Location with Pin */}
-          <div className="flex items-center gap-1.5 text-slate-500 text-xs mt-1.5">
+          <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 text-xs mt-1.5">
             <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
             <span className="line-clamp-1">{property.location}</span>
           </div>
@@ -193,39 +197,39 @@ export default function PropertyCard({
           property.genderPreference ||
           (property.occupationPreference && property.occupationPreference !== 'Any') ||
           (property.availableSeats !== undefined && property.availableSeats !== null)) && (
-          <div className="pt-2.5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-slate-600 text-xs font-medium">
+          <div className="pt-2.5 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 text-slate-600 dark:text-slate-400 text-xs font-medium">
             {property.bedrooms !== undefined && (
               <div className="flex items-center gap-1">
                 <BedDouble className="w-3.5 h-3.5 text-slate-400" />
-                <span>{property.bedrooms} Beds</span>
+                <span>{property.bedrooms} {t('beds')}</span>
               </div>
             )}
 
             {property.bathrooms !== undefined && (
               <div className="flex items-center gap-1">
                 <Bath className="w-3.5 h-3.5 text-slate-400" />
-                <span>{property.bathrooms} Baths</span>
+                <span>{property.bathrooms} {t('baths')}</span>
               </div>
             )}
 
             {property.areaSqft !== undefined && (
               <div className="flex items-center gap-1">
                 <Maximize2 className="w-3.5 h-3.5 text-slate-400" />
-                <span>{property.areaSqft} sqft</span>
+                <span>{property.areaSqft} {t('sqft')}</span>
               </div>
             )}
 
             {/* Gender Preference Indicator */}
             {property.genderPreference && (
-              <div className="flex items-center gap-1 text-slate-700 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-150">
+              <div className="flex items-center gap-1 text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 px-2 py-0.5 rounded-md border border-slate-150 dark:border-slate-700">
                 <Users className="w-3.5 h-3.5 text-emerald-600" />
-                <span>{property.genderPreference}</span>
+                <span>{translateGender(property.genderPreference)}</span>
               </div>
             )}
 
             {/* Occupation Preference Indicator */}
             {property.occupationPreference && property.occupationPreference !== 'Any' && (
-              <div className="flex items-center gap-1 text-slate-700 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-150">
+              <div className="flex items-center gap-1 text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 px-2 py-0.5 rounded-md border border-slate-150 dark:border-slate-700">
                 <Briefcase className="w-3.5 h-3.5 text-emerald-600" />
                 <span>{property.occupationPreference}</span>
               </div>
@@ -233,10 +237,10 @@ export default function PropertyCard({
 
             {/* Available Seats Indicator */}
             {property.availableSeats !== undefined && property.availableSeats !== null && (
-              <div className="flex items-center gap-1 text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 font-semibold">
+              <div className="flex items-center gap-1 text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800 font-semibold">
                 <User className="w-3.5 h-3.5 text-emerald-600" />
                 <span>
-                  {property.availableSeats} {property.availableSeats === 1 ? 'Seat' : 'Seats'}
+                  {property.availableSeats} {property.availableSeats === 1 ? t('seat') : t('seats')}
                 </span>
               </div>
             )}

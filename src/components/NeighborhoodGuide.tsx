@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import {
-  BookOpen,
-  Activity,
-  Bus,
+  GraduationCap,
+  Stethoscope,
+  TreePine,
+  BusFront,
   Sparkles,
   AlertCircle,
   RefreshCw,
@@ -10,9 +11,10 @@ import {
 } from 'lucide-react';
 
 export interface NeighborhoodInsightsData {
-  topSchools: string[];
-  topHospitals: string[];
-  nearestTransport: string[];
+  education: string[];
+  healthcare: string[];
+  recreation: string[];
+  transportation: string[];
 }
 
 export interface NeighborhoodGuideProps {
@@ -21,8 +23,8 @@ export interface NeighborhoodGuideProps {
 
 /**
  * NeighborhoodGuide component
- * Fetches AI-powered real estate neighborhood insights for a given location in Dhaka
- * using Google Gemini API.
+ * Displays neighborhood insights for a given location in Dhaka covering
+ * Education, Healthcare, Recreation, and Transportation.
  */
 export default function NeighborhoodGuide({ location = 'Dhanmondi, Dhaka' }: NeighborhoodGuideProps) {
   const [data, setData] = useState<NeighborhoodInsightsData | null>(null);
@@ -38,7 +40,6 @@ export default function NeighborhoodGuide({ location = 'Dhanmondi, Dhaka' }: Nei
       setError(null);
 
       try {
-        // Server-side Gemini API call
         const response = await fetch('/api/gemini/neighborhood', {
           method: 'POST',
           headers: {
@@ -48,11 +49,12 @@ export default function NeighborhoodGuide({ location = 'Dhanmondi, Dhaka' }: Nei
         });
 
         if (response.ok) {
-          const parsedData = await response.json();
+          const parsedData: NeighborhoodInsightsData = await response.json();
           if (
-            Array.isArray(parsedData.topSchools) &&
-            Array.isArray(parsedData.topHospitals) &&
-            Array.isArray(parsedData.nearestTransport)
+            Array.isArray(parsedData.education) &&
+            Array.isArray(parsedData.healthcare) &&
+            Array.isArray(parsedData.recreation) &&
+            Array.isArray(parsedData.transportation)
           ) {
             if (isMounted) {
               setData(parsedData);
@@ -62,52 +64,16 @@ export default function NeighborhoodGuide({ location = 'Dhanmondi, Dhaka' }: Nei
           }
         }
 
-        // Context-aware fallback for Dhaka neighborhoods to guarantee continuity
-        const normalized = (location || '').toLowerCase();
-        let fallbackData: NeighborhoodInsightsData = {
-          topSchools: ['Mastermind School', 'Scholastica Junior Campus', 'Sunnydale School'],
-          topHospitals: ['Ibn Sina Hospital', 'Anwer Khan Modern Hospital', 'Labaid Specialized Hospital'],
-          nearestTransport: ['Dhanmondi 27 Bus Stop', 'Science Lab Transit Counter'],
-        };
-
-        if (normalized.includes('banani')) {
-          fallbackData = {
-            topSchools: ['South Breeze School', 'Banani Bidyaniketan School', 'Playpen School'],
-            topHospitals: ['Universal Medical College Hospital', 'Square Clinic Banani', 'Prajapati Specialized Clinic'],
-            nearestTransport: ['Banani Kakoli Bus Terminal', 'Banani Railway Station'],
-          };
-        } else if (normalized.includes('gulshan')) {
-          fallbackData = {
-            topSchools: ['American International School Dhaka (AISD)', 'Manarat College', 'International School Dhaka'],
-            topHospitals: ['United Hospital Gulshan', 'Praava Health Center', 'Evercare Consultation Center'],
-            nearestTransport: ['Gulshan-2 Circle Transit Stand', 'Gulshan-1 DCC Bus Stand'],
-          };
-        } else if (normalized.includes('uttara')) {
-          fallbackData = {
-            topSchools: ['Scholastica Senior Campus', 'Rajuk Uttara Model College', 'DPS STS School'],
-            topHospitals: ['Kuwait Bangladesh Friendship Hospital', 'Ahsania Mission Cancer Hospital', 'Crescent Hospital'],
-            nearestTransport: ['Uttara North Metro Station (MRT Line 6)', 'Azampur Bus Stand'],
-          };
-        } else if (normalized.includes('mirpur')) {
-          fallbackData = {
-            topSchools: ['SOS Hermann Gmeiner College', 'Monipur High School & College', 'Mirpur Cantonment Public School'],
-            topHospitals: ['National Heart Foundation', 'Dr. Azhar Health Care Mirpur', 'Al-Helal Specialized Hospital'],
-            nearestTransport: ['Mirpur 10 Metro Station (MRT Line 6)', 'Mirpur 1 Bus Stop'],
-          };
-        }
-
-        if (isMounted) {
-          setData(fallbackData);
-          setLoading(false);
-        }
-      } catch (err) {
-        console.warn('NeighborhoodGuide insights notice:', err);
-        // Ensure graceful fallback rather than broken UI
+        throw new Error('Could not retrieve neighborhood insights');
+      } catch (err: any) {
+        console.warn('NeighborhoodGuide insights notice:', err?.message || err);
+        // Fallback default
         if (isMounted) {
           setData({
-            topSchools: ['Mastermind School', 'Scholastica School', 'Sunnydale School'],
-            topHospitals: ['Ibn Sina Hospital', 'Square Hospital', 'Labaid Specialized Hospital'],
-            nearestTransport: ['Local Metro Station (MRT Line 6)', 'Main Road Bus Stop'],
+            education: ['Local Govt. Degree College', 'Reputed High School', 'Primary Education Institute'],
+            healthcare: ['General Hospital', 'Local Community Clinic', '24/7 Pharmacy'],
+            recreation: ['Community Playground', 'Sector/Block Park', 'Local Walkway'],
+            transportation: ['Main Road Bus Stand', 'City Transit Hub', 'Rickshaw/Auto Stand'],
           });
           setLoading(false);
         }
@@ -124,24 +90,24 @@ export default function NeighborhoodGuide({ location = 'Dhanmondi, Dhaka' }: Nei
   }, [location, reloadKey]);
 
   return (
-    <div className="w-full bg-white rounded-3xl border border-slate-200 p-5 sm:p-6 shadow-sm space-y-5">
+    <div className="w-full bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 shadow-xs space-y-5">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center border border-emerald-100">
+          <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 flex items-center justify-center border border-emerald-100 dark:border-emerald-800">
             <Sparkles className="w-4 h-4" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="text-base sm:text-lg font-bold text-slate-900">
+              <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
                 Neighborhood Insights
               </h3>
-              <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold tracking-wide uppercase">
-                AI Powered
+              <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 text-[10px] font-bold tracking-wide uppercase">
+                Area Guide
               </span>
             </div>
-            <p className="text-xs text-slate-500">
-              Key amenities & accessibility around {location}
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Key amenities & connectivity around {location}
             </p>
           </div>
         </div>
@@ -150,8 +116,8 @@ export default function NeighborhoodGuide({ location = 'Dhanmondi, Dhaka' }: Nei
           <button
             type="button"
             onClick={() => setReloadKey((prev) => prev + 1)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 hover:text-slate-900 transition-colors cursor-pointer"
-            title="Refresh AI Insights"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
+            title="Refresh Insights"
           >
             <RefreshCw className="w-3.5 h-3.5" />
             <span>Refresh</span>
@@ -159,60 +125,39 @@ export default function NeighborhoodGuide({ location = 'Dhanmondi, Dhaka' }: Nei
         )}
       </div>
 
-      {/* Insights Content Container with consistent min-height to prevent CLS */}
-      <div className="min-h-[300px]">
+      {/* Insights Content Container */}
+      <div className="min-h-[260px]">
         {/* Modern Pulsing Loading Skeleton */}
         {loading && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 animate-pulse min-h-[300px]">
-            {/* Education Skeleton */}
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-3 min-h-[220px]">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-slate-200" />
-                <div className="h-4 w-24 bg-slate-200 rounded" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-pulse min-h-[240px]">
+            {[1, 2, 3, 4].map((skeletonIndex) => (
+              <div
+                key={skeletonIndex}
+                className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 space-y-3 min-h-[200px]"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-700" />
+                  <div className="h-4 w-24 bg-slate-200 dark:bg-slate-700 rounded" />
+                </div>
+                <div className="space-y-2 pt-1">
+                  <div className="h-3 w-full bg-slate-200 dark:bg-slate-700 rounded" />
+                  <div className="h-3 w-4/5 bg-slate-200 dark:bg-slate-700 rounded" />
+                  <div className="h-3 w-2/3 bg-slate-200 dark:bg-slate-700 rounded" />
+                </div>
               </div>
-              <div className="space-y-2 pt-1">
-                <div className="h-3 w-full bg-slate-200 rounded" />
-                <div className="h-3 w-4/5 bg-slate-200 rounded" />
-                <div className="h-3 w-2/3 bg-slate-200 rounded" />
-              </div>
-            </div>
-
-            {/* Health Skeleton */}
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-3 min-h-[220px]">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-slate-200" />
-                <div className="h-4 w-20 bg-slate-200 rounded" />
-              </div>
-              <div className="space-y-2 pt-1">
-                <div className="h-3 w-full bg-slate-200 rounded" />
-                <div className="h-3 w-3/4 bg-slate-200 rounded" />
-                <div className="h-3 w-5/6 bg-slate-200 rounded" />
-              </div>
-            </div>
-
-            {/* Transport Skeleton */}
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-3 min-h-[220px]">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-slate-200" />
-                <div className="h-4 w-28 bg-slate-200 rounded" />
-              </div>
-              <div className="space-y-2 pt-1">
-                <div className="h-3 w-full bg-slate-200 rounded" />
-                <div className="h-3 w-4/5 bg-slate-200 rounded" />
-              </div>
-            </div>
+            ))}
           </div>
         )}
 
-        {/* Error Handling with polite fallback */}
+        {/* Error State */}
         {!loading && error && (
-          <div className="p-4 sm:p-5 rounded-2xl bg-amber-50/80 border border-amber-200 text-amber-900 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="p-4 sm:p-5 rounded-2xl bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div className="flex items-start gap-3">
               <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-semibold text-amber-900">{error}</p>
-                <p className="text-xs text-amber-700/90 mt-0.5">
-                  Check connection or configure your Google Gemini API key in settings.
+                <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">{error}</p>
+                <p className="text-xs text-amber-700/90 dark:text-amber-400 mt-0.5">
+                  Check connection and try refreshing again.
                 </p>
               </div>
             </div>
@@ -226,29 +171,29 @@ export default function NeighborhoodGuide({ location = 'Dhanmondi, Dhaka' }: Nei
           </div>
         )}
 
-        {/* Render Education, Health, and Transport lists */}
+        {/* Insights 4-Column Grid: Education, Healthcare, Recreation, Transportation */}
         {!loading && !error && data && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 min-h-[300px]">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Section 1: Education */}
-            <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/90 flex flex-col justify-between hover:border-emerald-200 transition-colors min-h-[220px]">
+            <div className="p-4 rounded-2xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-200/90 dark:border-slate-800 flex flex-col justify-between hover:border-blue-200 dark:hover:border-blue-800 transition-colors">
               <div>
                 <div className="flex items-center gap-2.5 mb-3">
-                  <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center border border-blue-100">
-                    <BookOpen className="w-4 h-4" />
+                  <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-400 flex items-center justify-center border border-blue-100 dark:border-blue-800">
+                    <GraduationCap className="w-4 h-4" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-slate-900">Education</h4>
-                    <p className="text-[11px] text-slate-500">Top Schools & Colleges</p>
+                    <h4 className="text-sm font-bold text-slate-900 dark:text-white">Education</h4>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">Schools & Universities</p>
                   </div>
                 </div>
 
                 <ul className="space-y-2">
-                  {data.topSchools?.map((school, index) => (
+                  {data.education?.map((school, index) => (
                     <li
                       key={index}
-                      className="flex items-start gap-2 text-xs text-slate-700 bg-white p-2.5 rounded-xl border border-slate-100 shadow-2xs"
+                      className="flex items-start gap-2 text-xs text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800/90 p-2.5 rounded-xl border border-slate-100 dark:border-slate-700/80 shadow-2xs"
                     >
-                      <CheckCircle2 className="w-3.5 h-3.5 text-blue-600 shrink-0 mt-0.5" />
+                      <CheckCircle2 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
                       <span className="font-medium leading-tight">{school}</span>
                     </li>
                   ))}
@@ -256,26 +201,26 @@ export default function NeighborhoodGuide({ location = 'Dhanmondi, Dhaka' }: Nei
               </div>
             </div>
 
-            {/* Section 2: Health */}
-            <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/90 flex flex-col justify-between hover:border-emerald-200 transition-colors min-h-[220px]">
+            {/* Section 2: Healthcare */}
+            <div className="p-4 rounded-2xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-200/90 dark:border-slate-800 flex flex-col justify-between hover:border-rose-200 dark:hover:border-rose-800 transition-colors">
               <div>
                 <div className="flex items-center gap-2.5 mb-3">
-                  <div className="w-8 h-8 rounded-xl bg-rose-50 text-rose-700 flex items-center justify-center border border-rose-100">
-                    <Activity className="w-4 h-4" />
+                  <div className="w-8 h-8 rounded-xl bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-400 flex items-center justify-center border border-rose-100 dark:border-rose-800">
+                    <Stethoscope className="w-4 h-4" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-slate-900">Healthcare</h4>
-                    <p className="text-[11px] text-slate-500">Top Hospitals & Clinics</p>
+                    <h4 className="text-sm font-bold text-slate-900 dark:text-white">Healthcare</h4>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">Hospitals & Diagnostic</p>
                   </div>
                 </div>
 
                 <ul className="space-y-2">
-                  {data.topHospitals?.map((hospital, index) => (
+                  {data.healthcare?.map((hospital, index) => (
                     <li
                       key={index}
-                      className="flex items-start gap-2 text-xs text-slate-700 bg-white p-2.5 rounded-xl border border-slate-100 shadow-2xs"
+                      className="flex items-start gap-2 text-xs text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800/90 p-2.5 rounded-xl border border-slate-100 dark:border-slate-700/80 shadow-2xs"
                     >
-                      <CheckCircle2 className="w-3.5 h-3.5 text-rose-600 shrink-0 mt-0.5" />
+                      <CheckCircle2 className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
                       <span className="font-medium leading-tight">{hospital}</span>
                     </li>
                   ))}
@@ -283,26 +228,53 @@ export default function NeighborhoodGuide({ location = 'Dhanmondi, Dhaka' }: Nei
               </div>
             </div>
 
-            {/* Section 3: Transport */}
-            <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/90 flex flex-col justify-between hover:border-emerald-200 transition-colors min-h-[220px]">
+            {/* Section 3: Recreation */}
+            <div className="p-4 rounded-2xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-200/90 dark:border-slate-800 flex flex-col justify-between hover:border-emerald-200 dark:hover:border-emerald-800 transition-colors">
               <div>
                 <div className="flex items-center gap-2.5 mb-3">
-                  <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center border border-emerald-100">
-                    <Bus className="w-4 h-4" />
+                  <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 flex items-center justify-center border border-emerald-100 dark:border-emerald-800">
+                    <TreePine className="w-4 h-4" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-slate-900">Transport</h4>
-                    <p className="text-[11px] text-slate-500">Metro & Transit Stops</p>
+                    <h4 className="text-sm font-bold text-slate-900 dark:text-white">Recreation</h4>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">Parks, Lakes & Fields</p>
                   </div>
                 </div>
 
                 <ul className="space-y-2">
-                  {data.nearestTransport?.map((transit, index) => (
+                  {data.recreation?.map((park, index) => (
                     <li
                       key={index}
-                      className="flex items-start gap-2 text-xs text-slate-700 bg-white p-2.5 rounded-xl border border-slate-100 shadow-2xs"
+                      className="flex items-start gap-2 text-xs text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800/90 p-2.5 rounded-xl border border-slate-100 dark:border-slate-700/80 shadow-2xs"
                     >
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                      <span className="font-medium leading-tight">{park}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+
+            {/* Section 4: Transportation */}
+            <div className="p-4 rounded-2xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-200/90 dark:border-slate-800 flex flex-col justify-between hover:border-amber-200 dark:hover:border-amber-800 transition-colors">
+              <div>
+                <div className="flex items-center gap-2.5 mb-3">
+                  <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 flex items-center justify-center border border-amber-100 dark:border-amber-800">
+                    <BusFront className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-900 dark:text-white">Transportation</h4>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">Metro, Bus & Transit</p>
+                  </div>
+                </div>
+
+                <ul className="space-y-2">
+                  {data.transportation?.map((transit, index) => (
+                    <li
+                      key={index}
+                      className="flex items-start gap-2 text-xs text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800/90 p-2.5 rounded-xl border border-slate-100 dark:border-slate-700/80 shadow-2xs"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                       <span className="font-medium leading-tight">{transit}</span>
                     </li>
                   ))}

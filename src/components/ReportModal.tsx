@@ -136,7 +136,7 @@ export default function ReportModal({
                 Report {targetType === 'property' ? 'Listing' : 'User'}
               </h2>
               <p className="text-xs text-slate-500">
-                Help keep the Thikana rental community trustworthy
+                Help keep the Bhara Hobe rental community trustworthy
               </p>
             </div>
           </div>

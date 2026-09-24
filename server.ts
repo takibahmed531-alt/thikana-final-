@@ -33,66 +33,79 @@ function getGenAI(): GoogleGenAI | null {
   return genAIClient;
 }
 
-// Fallback Dhaka insights generator in case API key is missing or model fails
+// Curated Dhaka neighborhood insights dictionary
+const dhakaNeighborhoodInsights: Record<string, { education: string[]; healthcare: string[]; recreation: string[]; transportation: string[] }> = {
+  dhanmondi: {
+    education: ['Dhaka City College', 'University of Liberal Arts Bangladesh (ULAB)', 'Mastermind School', 'Dhanmondi Govt. Boys High School'],
+    healthcare: ['Ibn Sina Specialized Hospital', 'Labaid Cardiac Hospital', 'Anwer Khan Modern Medical College', 'Popular Diagnostic Centre'],
+    recreation: ['Dhanmondi Lake & Park', 'Rabindra Sarobar', 'Abahani Playground', 'Kalabagan Krira Chakra Field'],
+    transportation: ['Dhanmondi 27 Bus Stop', 'Science Lab Intersection', 'Jigatola Bus Stand', 'City College Transit'],
+  },
+  gulshan_banani: {
+    education: ['North South University (Nearby)', 'American International School (AISD)', 'Banani Bidyaniketan', 'South Breeze School'],
+    healthcare: ['United Hospital', 'Evercare Hospital', 'Banani Clinic', 'Praava Health'],
+    recreation: ['Gulshan Lake Park', 'Justice Shahabuddin Ahmed Park', 'Banani Chairman Bari Field'],
+    transportation: ['Kakoli Bus Stand', 'Gulshan 2 Circle', 'Banani Railway Station', 'Notun Bazar Transit'],
+  },
+  uttara: {
+    education: ['Rajuk Uttara Model College', 'IUBAT', 'Scholastica Senior Campus', 'DPS STS School'],
+    healthcare: ['Kuwait Bangladesh Friendship Govt Hospital', 'Ahsania Mission Cancer Hospital', 'Radical Hospitals'],
+    recreation: ['Sector 4 Central Park', 'Sector 13 Lake', 'Uttara Sector 11 Park', 'Diabari Open Field'],
+    transportation: ['Uttara North Metro Station (MRT 6)', 'Hazrat Shahjalal International Airport', 'Airport Railway Station', 'Azampur Bus Stand', 'Abdullahpur Bus Terminal'],
+  },
+  mirpur: {
+    education: ['Bangladesh University of Business and Technology (BUBT)', 'Mirpur Bangla College', 'Monipur High School & College', 'SOS Hermann Gmeiner'],
+    healthcare: ['National Heart Foundation', 'OSB Eye Hospital', 'Al-Helal Specialized Hospital', 'Marks Medical College'],
+    recreation: ['National Botanical Garden', 'Sher-e-Bangla National Cricket Stadium', 'Bangladesh National Zoo', 'Mirpur 12 DOHS Park'],
+    transportation: ['Mirpur 10 Metro Station', 'Mirpur 1 Bus Stand', 'Pallabi Metro Station', 'Gabtoli Bus Terminal (Nearby)'],
+  },
+  mohammadpur: {
+    education: ['Dhaka Residential Model College', 'St. Joseph Higher Secondary School', 'Mohammadpur Preparatory', 'Shyamoli Ideal Polytechnic'],
+    healthcare: ['Shaheed Suhrawardy Medical College Hospital', 'National Institute of Neurosciences', 'Al-Markazul Islami Hospital', 'City Hospital'],
+    recreation: ['Shyamoli Shishu Mela (DNCC Wonderland)', 'Town Hall Field', 'Zakir Hossain Park', 'Bosila River View Walkway'],
+    transportation: ['Mohammadpur Bus Stand', 'Shyamoli Square Transit', 'Japan Garden City Bus Stop', 'Gabtoli Bus Terminal (Nearby)'],
+  },
+  bashundhara_badda: {
+    education: ['North South University (NSU)', 'Independent University, Bangladesh (IUB)', 'Hurdco International School', 'Cambrian College'],
+    healthcare: ['Evercare Hospital Dhaka', 'Bashundhara Eye Hospital', 'AMZ Hospital Badda'],
+    recreation: ['Bashundhara Sports Complex', 'Bashundhara Block D Park', 'Aftabnagar Main Field', 'Hatirjheel Walkway'],
+    transportation: ['Jamuna Future Park Bus Stop', 'Bashundhara Main Gate', 'Badda Link Road', 'Rampura Bridge Transit'],
+  },
+  motijheel_paltan: {
+    education: ['Notre Dame College', 'Ideal School & College', 'Motijheel Govt Boys High School', 'Dhaka University (Nearby)'],
+    healthcare: ['Bangabandhu Sheikh Mujib Medical University (BSMMU)', 'Islami Bank Central Hospital', 'BIRDEM General Hospital'],
+    recreation: ['Bangabandhu National Stadium', 'Osmani Udyan', 'Ramna Park (Nearby)', 'Motijheel T&T Club Field'],
+    transportation: ['Motijheel Metro Station', 'Kamalapur Railway Station', 'Gulishtan Bus Terminal', 'Press Club Metro Station'],
+  },
+  old_dhaka: {
+    education: ['Jagannath University', 'Kabi Nazrul Govt College', 'St. Gregorys High School', 'Pogose School'],
+    healthcare: ['Sir Salimullah Medical College (Mitford Hospital)', 'Dhaka National Medical College Hospital', 'Mahanagar General Hospital'],
+    recreation: ['Lalbagh Fort Grounds', 'Bahadur Shah Park', 'Ahsan Manzil Grounds'],
+    transportation: ['Sadarghat Launch Terminal', 'Babubazar Bridge Transit', 'Ray Saheb Bazar Bus Stand'],
+  },
+  generic_dhaka: {
+    education: ['Local Govt. Degree College', 'Reputed High School', 'Primary Education Institute'],
+    healthcare: ['General Hospital', 'Local Community Clinic', '24/7 Pharmacy'],
+    recreation: ['Community Playground', 'Sector/Block Park', 'Local Walkway'],
+    transportation: ['Main Road Bus Stand', 'City Transit Hub', 'Rickshaw/Auto Stand'],
+  },
+};
+
 function getDhakaAreaFallback(areaName: string) {
-  const normalized = (areaName || '').toLowerCase();
+  const location = (areaName || '').toString().toLowerCase();
 
-  if (normalized.includes('dhanmondi')) {
-    return {
-      topSchools: ['Mastermind School (Dhanmondi)', 'Scholastica Junior Campus', 'Sunnydale School'],
-      topHospitals: ['Ibn Sina Specialized Hospital', 'Anwer Khan Modern Medical College Hospital', 'Labaid Specialized Hospital'],
-      nearestTransport: ['Dhanmondi 27 Bus Stop', 'Science Lab Bus Counter'],
-    };
-  }
-  if (normalized.includes('banani')) {
-    return {
-      topSchools: ['South Breeze School', 'Banani Bidyaniketan School & College', 'Playpen School'],
-      topHospitals: ['Universal Medical College Hospital', 'Square Hospital Banani Center', 'Prajapati Specialized Clinic'],
-      nearestTransport: ['Banani Kakoli Bus Terminal', 'Banani Railway Station'],
-    };
-  }
-  if (normalized.includes('gulshan')) {
-    return {
-      topSchools: ['The American International School (AISD)', 'Manarat Dhaka International College', 'International School Dhaka (ISD)'],
-      topHospitals: ['United Hospital Gulshan', 'Praava Health Clinic', 'Evercare Consultation Clinic'],
-      nearestTransport: ['Gulshan-2 Circle Transit Stand', 'Gulshan-1 DCC Bus Stand'],
-    };
-  }
-  if (normalized.includes('uttara')) {
-    return {
-      topSchools: ['Scholastica Senior Campus', 'Rajuk Uttara Model College', 'DPS STS School'],
-      topHospitals: ['Kuwait Bangladesh Friendship Government Hospital', 'Ahsania Mission Cancer Hospital', 'Crescent Hospital Uttara'],
-      nearestTransport: ['Uttara North Metro Station (MRT Line 6)', 'Azampur Bus Stand'],
-    };
-  }
-  if (normalized.includes('mirpur')) {
-    return {
-      topSchools: ['SOS Hermann Gmeiner College', 'Monipur High School & College', 'Mirpur Cantonment Public School'],
-      topHospitals: ['National Heart Foundation Hospital', 'Dr. Azhar Health Care Mirpur', 'Al-Helal Specialized Hospital'],
-      nearestTransport: ['Mirpur 10 Metro Station (MRT Line 6)', 'Mirpur 1 Bus Stop'],
-    };
-  }
-  if (normalized.includes('mohammadpur')) {
-    return {
-      topSchools: ['St. Joseph Higher Secondary School', 'Mohammadpur Preparatory School', 'Residential Model College'],
-      topHospitals: ['Shaheed Suhrawardy Medical College Hospital', 'National Institute of Neurosciences', 'Al-Markazul Islami Hospital'],
-      nearestTransport: ['Mohammadpur Bus Stand (Town Hall)', 'Japan Garden City Bus Stop'],
-    };
-  }
-  if (normalized.includes('bashundhara')) {
-    return {
-      topSchools: ['International School Dhaka (ISD)', 'Hurdco International School', 'Playpen School'],
-      topHospitals: ['Evercare Hospital Dhaka', 'Bashundhara Eye Hospital', 'Apollo Diagnostic Clinic'],
-      nearestTransport: ['Bashundhara Main Gate Bus Stop', 'Jamuna Future Park Transit Hub'],
-    };
-  }
+  let matchedKey = 'generic_dhaka';
 
-  // Generic Dhaka fallback
-  return {
-    topSchools: ['Dhaka Residential Model College', 'Ideal School & College', 'Viqarunnisa Noon School'],
-    topHospitals: ['Dhaka Medical College Hospital', 'Square Hospital', 'Bangabandhu Sheikh Mujib Medical University (BSMMU)'],
-    nearestTransport: ['Central City Bus Terminal', 'Nearest MRT Line 6 Station'],
-  };
+  if (location.includes('dhanmondi') || location.includes('jigatola') || location.includes('kalabagan')) matchedKey = 'dhanmondi';
+  else if (location.includes('gulshan') || location.includes('banani') || location.includes('baridhara') || location.includes('niketan')) matchedKey = 'gulshan_banani';
+  else if (location.includes('uttara') || location.includes('turag') || location.includes('airport')) matchedKey = 'uttara';
+  else if (location.includes('mirpur') || location.includes('pallabi') || location.includes('kazipara') || location.includes('kafrul') || location.includes('rupnagar')) matchedKey = 'mirpur';
+  else if (location.includes('mohammadpur') || location.includes('shyamoli') || location.includes('adabor') || location.includes('agargaon') || location.includes('kalyanpur')) matchedKey = 'mohammadpur';
+  else if (location.includes('bashundhara') || location.includes('badda') || location.includes('rampura') || location.includes('aftabnagar') || location.includes('khilkhet')) matchedKey = 'bashundhara_badda';
+  else if (location.includes('motijheel') || location.includes('paltan') || location.includes('shahbagh') || location.includes('faramgate') || location.includes('farmgate') || location.includes('tejgaon') || location.includes('khilgaon') || location.includes('ramna')) matchedKey = 'motijheel_paltan';
+  else if (location.includes('lalbagh') || location.includes('kotwali') || location.includes('sutrapur') || location.includes('chowk') || location.includes('wari') || location.includes('bangshal') || location.includes('gandaria')) matchedKey = 'old_dhaka';
+
+  return dhakaNeighborhoodInsights[matchedKey];
 }
 
 async function startServer() {
@@ -104,105 +117,22 @@ async function startServer() {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
   });
 
-  // Server-side Gemini API endpoint for Neighborhood Guide
-  app.post('/api/gemini/neighborhood', async (req, res) => {
-    const location = (req.body?.location || 'Dhanmondi, Dhaka').toString().trim();
+  // Server-side Neighborhood Insights endpoint
+  app.post('/api/gemini/neighborhood', (req, res) => {
+    const location = (req.body?.location || '').toString().toLowerCase();
 
-    try {
-      const ai = getGenAI();
-      if (!ai) {
-        console.info('GEMINI_API_KEY is not configured on server. Providing local Dhaka insights fallback.');
-        const fallback = getDhakaAreaFallback(location);
-        return res.json(fallback);
-      }
+    let matchedKey = 'generic_dhaka';
 
-      const systemInstruction =
-        'You are a local Dhaka real estate expert. The user will provide an area name. Respond ONLY with a valid JSON object containing 3 arrays: topSchools (max 3), topHospitals (max 3), and nearestTransport (max 2 like Metro or Bus stops). Do not include markdown code blocks or any other text, just the raw JSON.';
+    if (location.includes('dhanmondi') || location.includes('jigatola') || location.includes('kalabagan')) matchedKey = 'dhanmondi';
+    else if (location.includes('gulshan') || location.includes('banani') || location.includes('baridhara') || location.includes('niketan')) matchedKey = 'gulshan_banani';
+    else if (location.includes('uttara') || location.includes('turag') || location.includes('airport')) matchedKey = 'uttara';
+    else if (location.includes('mirpur') || location.includes('pallabi') || location.includes('kazipara') || location.includes('kafrul') || location.includes('rupnagar')) matchedKey = 'mirpur';
+    else if (location.includes('mohammadpur') || location.includes('shyamoli') || location.includes('adabor') || location.includes('agargaon') || location.includes('kalyanpur')) matchedKey = 'mohammadpur';
+    else if (location.includes('bashundhara') || location.includes('badda') || location.includes('rampura') || location.includes('aftabnagar') || location.includes('khilkhet')) matchedKey = 'bashundhara_badda';
+    else if (location.includes('motijheel') || location.includes('paltan') || location.includes('shahbagh') || location.includes('faramgate') || location.includes('tejgaon') || location.includes('khilgaon') || location.includes('ramna')) matchedKey = 'motijheel_paltan';
+    else if (location.includes('lalbagh') || location.includes('kotwali') || location.includes('sutrapur') || location.includes('chowk') || location.includes('wari') || location.includes('bangshal') || location.includes('gandaria')) matchedKey = 'old_dhaka';
 
-      // Try primary model then fallback models if service is experiencing temporary high demand (503)
-      const candidateModels = ['gemini-3.8-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite'];
-      let lastError: unknown = null;
-      let parsedResult: any = null;
-
-      for (const model of candidateModels) {
-        try {
-          const response = await ai.models.generateContent({
-            model,
-            contents: `Area: ${location}`,
-            config: {
-              systemInstruction,
-              responseMimeType: 'application/json',
-              responseSchema: {
-                type: Type.OBJECT,
-                properties: {
-                  topSchools: {
-                    type: Type.ARRAY,
-                    items: { type: Type.STRING },
-                    description: 'Top 3 schools and colleges',
-                  },
-                  topHospitals: {
-                    type: Type.ARRAY,
-                    items: { type: Type.STRING },
-                    description: 'Top 3 hospitals and clinics',
-                  },
-                  nearestTransport: {
-                    type: Type.ARRAY,
-                    items: { type: Type.STRING },
-                    description: 'Top 2 transport stops like Metro or Bus',
-                  },
-                },
-                required: ['topSchools', 'topHospitals', 'nearestTransport'],
-              },
-              temperature: 0.2,
-            },
-          });
-
-          const rawText = response.text || '';
-          if (!rawText) {
-            continue;
-          }
-
-          let cleaned = rawText.trim();
-          if (cleaned.startsWith('```json')) {
-            cleaned = cleaned.slice(7);
-          } else if (cleaned.startsWith('```')) {
-            cleaned = cleaned.slice(3);
-          }
-          if (cleaned.endsWith('```')) {
-            cleaned = cleaned.slice(0, -3);
-          }
-          cleaned = cleaned.trim();
-
-          const parsed = JSON.parse(cleaned);
-          if (
-            Array.isArray(parsed.topSchools) &&
-            Array.isArray(parsed.topHospitals) &&
-            Array.isArray(parsed.nearestTransport)
-          ) {
-            parsedResult = parsed;
-            break;
-          }
-        } catch (err: any) {
-          lastError = err;
-          // Continue to next candidate model if 503 or transient unavailability
-          console.info(`Model ${model} unavailable (${err?.status || err?.message || 'transient error'}), trying next model...`);
-        }
-      }
-
-      if (parsedResult) {
-        return res.json(parsedResult);
-      }
-
-      // If all candidate models encounter spikes in demand, gracefully provide curated Dhaka local data
-      console.info('All Gemini candidate models temporarily busy; serving curated local Dhaka fallback.');
-      const fallback = getDhakaAreaFallback(location);
-      return res.json(fallback);
-    } catch (err: any) {
-      console.info('Gemini generation notice, serving Dhaka fallback:', err?.message || 'unknown');
-      // Seamlessly fallback to authentic Dhaka local data so UI never breaks or returns an error status
-      const fallback = getDhakaAreaFallback(location);
-      return res.json(fallback);
-    }
+    return res.json(dhakaNeighborhoodInsights[matchedKey]);
   });
 
   // Automated Email Alert Dispatch Endpoint

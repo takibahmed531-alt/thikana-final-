@@ -29,7 +29,7 @@ export default function UserManualPage() {
           Step-by-Step User Manual
         </div>
         <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-          How to Use Thikana
+          How to Use Bhara Hobe
         </h1>
         <p className="mt-3 text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
           Master the complete rental lifecycle: from smart property searching and safe tenant-landlord messaging to publishing high-visibility listings.
@@ -173,7 +173,7 @@ export default function UserManualPage() {
                   Communicating &amp; Chatting Securely
                 </h2>
                 <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-                  Interact directly with landlords through Thikana&apos;s encrypted messaging system.
+                  Interact directly with landlords through Bhara Hobe&apos;s encrypted messaging system.
                 </p>
               </div>
             </div>
@@ -315,7 +315,7 @@ export default function UserManualPage() {
       <div className="mt-14 p-6 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/20 border border-emerald-200 dark:border-emerald-800/60">
         <div className="flex items-center gap-2.5 text-emerald-800 dark:text-emerald-300 font-bold text-sm mb-2">
           <Lightbulb className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-          <span>Thikana Pro Tips for Faster Results</span>
+          <span>Bhara Hobe Pro Tips for Faster Results</span>
         </div>
         <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs sm:text-sm text-slate-700 dark:text-slate-300">
           <li className="flex items-start gap-2">

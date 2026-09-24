@@ -6,9 +6,11 @@
 
 import imageCompression from 'browser-image-compression';
 import {
+  getStorage,
   ref,
   uploadBytes,
   getDownloadURL,
+  deleteObject,
 } from 'firebase/storage';
 import {
   collection,
@@ -35,6 +37,7 @@ import {
   PropertyFilters,
 } from '../types';
 import { handleFirestoreError, OperationType } from './firestoreErrors';
+import { updateUserLastActive } from './authService';
 
 export interface PropertyCreationResponse {
   success: boolean;
@@ -260,6 +263,8 @@ export async function createProperty(
       ...(parsedBathrooms !== undefined ? { bathrooms: parsedBathrooms } : {}),
       ...(parsedAreaSqft !== undefined ? { areaSqft: parsedAreaSqft } : {}),
       ...(parsedFloor !== undefined ? { floor: parsedFloor } : {}),
+      ...(propertyData.availableFrom !== undefined ? { availableFrom: propertyData.availableFrom } : {}),
+      ...(propertyData.utilityTerms !== undefined ? { utilityTerms: propertyData.utilityTerms } : {}),
       status: 'available', // Default to 'available' per specification
       coordinates: sanitizedCoordinates,
       createdAt: serverTimestamp(),
@@ -268,6 +273,8 @@ export async function createProperty(
     // Step 4: Write to 'properties' collection
     try {
       await setDoc(propertyDocRef, completePropertyData);
+      // Event-driven presence: update lastActive when user creates a listing
+      updateUserLastActive(landlordUid).catch(() => {});
     } catch (err) {
       handleFirestoreError(err, OperationType.CREATE, `properties/${propertyId}`);
     }
@@ -442,13 +449,62 @@ export async function getPropertyByAdId(adId: string): Promise<SinglePropertyRes
 }
 
 /**
- * Deletes a property document from the 'properties' collection in Firestore.
+ * Deletes a property document from the 'properties' collection in Firestore
+ * and deletes all associated image objects from Firebase Storage to prevent orphaned files.
  *
  * @param propertyId The unique property document ID
+ * @param imageUrls Array of image URLs/paths associated with the property to delete from Storage
  * @returns Promise resolving to true on success
  */
-export async function deletePropertyListing(propertyId: string) {
+export async function deletePropertyListing(
+  propertyId: string,
+  imageUrls: string[] = []
+): Promise<boolean> {
   if (!propertyId) throw new Error('Property ID is missing');
+
+  // Collect target image URLs (use passed imageUrls or inspect the document if empty)
+  let targetUrls: string[] = Array.isArray(imageUrls) ? [...imageUrls] : [];
+
+  if (targetUrls.length === 0) {
+    try {
+      const propSnap = await getDoc(doc(db, 'properties', propertyId));
+      if (propSnap.exists()) {
+        const propData = propSnap.data();
+        if (Array.isArray(propData.images)) {
+          targetUrls = propData.images;
+        } else if (Array.isArray(propData.imageUrls)) {
+          targetUrls = propData.imageUrls;
+        }
+      }
+    } catch (fetchErr) {
+      console.warn(`Could not inspect property document ${propertyId} before image cleanup:`, fetchErr);
+    }
+  }
+
+  // Step 1: Strict Deletion Logic - extract paths & delete every image from Storage
+  if (targetUrls.length > 0) {
+    const storageInstance = storage || getStorage();
+    await Promise.all(
+      targetUrls.map(async (url) => {
+        if (!url || typeof url !== 'string') return;
+        try {
+          if (
+            url.includes('firebasestorage.googleapis.com') ||
+            url.startsWith('gs://') ||
+            url.startsWith('properties/')
+          ) {
+            const imageRef = ref(storageInstance, url);
+            await deleteObject(imageRef);
+          }
+        } catch (storageErr) {
+          // Gracefully continue so document deletion succeeds even if storage file is missing
+          console.warn(`Could not delete storage image file (${url}):`, storageErr);
+        }
+      })
+    );
+  }
+
+  // Step 2: Delete Firestore Document
   await deleteDoc(doc(db, 'properties', propertyId));
   return true;
 }

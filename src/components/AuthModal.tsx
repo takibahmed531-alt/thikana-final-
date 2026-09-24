@@ -194,12 +194,12 @@ export default function AuthModal({
           </div>
           <div>
             <h2 className="text-xl font-bold text-slate-900 dark:text-white leading-tight">
-              {mode === 'signin' ? 'Sign In to Thikana' : 'Create an Account'}
+              {mode === 'signin' ? 'Sign In to Bhara Hobe' : 'Create an Account'}
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
               {mode === 'signin'
                 ? 'Welcome back! Sign in to continue'
-                : 'Join Thikana to find or list rental homes'}
+                : 'Join Bhara Hobe to find or list rental homes'}
             </p>
           </div>
         </div>
@@ -503,7 +503,7 @@ export default function AuthModal({
 
           {/* Discreet Legal Notice */}
           <p className="mt-3 text-[11px] text-slate-400 dark:text-slate-500 leading-tight">
-            By continuing, you agree to Thikana&apos;s{' '}
+            By continuing, you agree to Bhara Hobe&apos;s{' '}
             <Link
               to="/privacy"
               onClick={onClose}

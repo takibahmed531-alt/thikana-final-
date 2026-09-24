@@ -76,6 +76,8 @@ export interface PropertyListing {
   bathrooms?: number;
   areaSqft?: number;
   floor?: string;
+  availableFrom?: string;
+  utilityTerms?: string;
   status: 'available' | 'rented';
   coordinates: [number, number];
   createdAt: any;
@@ -100,6 +102,8 @@ export interface PropertyDataInput {
   bathrooms?: number;
   areaSqft?: number;
   floor?: string;
+  availableFrom?: string;
+  utilityTerms?: string;
   status: 'available' | 'rented';
   coordinates: [number, number];
 }
